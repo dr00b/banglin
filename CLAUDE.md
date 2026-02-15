@@ -259,7 +259,7 @@ espruino --port <DEVICE> myapp.js
 
 ## Git Workflow
 
-- **Default branch:** `master`
+- **Default branch:** `main`
 - Write clear, descriptive commit messages.
 - Keep commits small and focused on a single change.
 - Maintain a `ChangeLog` file with version-numbered entries for each release.
