@@ -236,6 +236,24 @@ var now = require("time_utils").getCurrentTimeMillis();
 - Use `delete menu[key]` to conditionally remove menu items rather than rebuilding the menu object — avoids extra allocations.
 - Keep code structured so bracket counting works correctly when pasting into the Espruino IDE.
 
+## Power Consumption
+Consider power consumption when using various tools. Turn off when not used.
+
+- Idle, accelerometer on 12.5Hz - 0.3mA
+- Idle, accelerometer on 1.25Hz (Bangle.setPollInterval(800)) - 0.15mA (default if not moved for ~120s)
+- Idle, clock (s7clk) updating once a second - 0.5mA
+- BLE Connected in high bandwidth mode - 0.75mA
+- Compass on, 12.5Hz - 1.2mA (+0.6mA)
+- Compass on, 1.25Hz (Bangle.setPollInterval(800)) - 1.0mA (+0.2mA)
+- Heart rate monitor on - 1.0mA (+0.7mA) (KickStarter version = ~1.5mA)
+- 100% CPU usage running JavaScript - 4mA (+3mA)
+- GPS on - 26mA (+25mA)
+- GPS on (set to GPS only) - 20mA (+19mA)
+- LCD touchscreen enabled (unlocked) - 2.8mA (+2.5mA)
+- LCD backlight on - 17mA (+16mA)
+- Turned off (Bangle.off - no RTC) - 0.02mA
+- Turned off (Bangle.softOff) - 0.03mA
+
 ## Development Environment
 
 ### Prerequisites
