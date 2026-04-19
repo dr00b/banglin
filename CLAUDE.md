@@ -256,17 +256,29 @@ Consider power consumption when using various tools. Turn off when not used.
 
 ## Development Environment
 
-### Prerequisites
+### Devcontainer (Claude Code hosted VMs + VS Code)
+
+The project includes a devcontainer at `.devcontainer/devcontainer.json`. This is used automatically by Claude Code hosted VMs and can be opened locally in VS Code via "Reopen in Container".
+
+The container provides:
+- Node.js 20
+- Playwright + Chromium (for emulator visual tests)
+- npm scripts for testing
+
+On container creation, `npm install` and `npx playwright install chromium --with-deps` run automatically.
+
+### Prerequisites (local host)
 
 - [Espruino Web IDE](https://www.espruino.com/ide/) or [espruino CLI tools](https://www.npmjs.com/package/espruino)
 - A Bangle.js device (or the emulator at https://www.espruino.com/ide/emulator.html)
 
-### Uploading Code
+### Deploying to Watch
 
-Use the Espruino Web IDE to connect to the watch via Bluetooth and upload `.js` files, or use the CLI:
+Deployment to the physical watch runs on the **host machine** (not inside the devcontainer), because Bluetooth LE access is impractical inside a container.
 
 ```bash
-espruino --port <DEVICE> myapp.js
+npm install -g espruino
+espruino --port BT apps/myapp/app.js
 ```
 
 ### Reference
@@ -274,6 +286,40 @@ espruino --port <DEVICE> myapp.js
 - [Bangle.js API Reference](https://banglejs.com/reference)
 - [Espruino API Reference](https://www.espruino.com/Reference)
 - [BangleApps Repository](https://github.com/espruino/BangleApps) — examples of community apps
+
+## Testing
+
+### Unit Tests
+
+Use Node.js built-in test runner (`node:test`). No external test framework needed.
+
+```bash
+npm test
+```
+
+Unit tests live in `tests/unit/` and use `node:test` + `node:assert`. When app code exists, add a Bangle.js API mock in `tests/helpers/bangle-mock.js` to stub globals like `Bangle`, `E`, `g`, and `require("Storage")`.
+
+### Visual / Emulator Tests
+
+Playwright drives the Bangle.js web emulator at `espruino.com/ide/emu/emu_banglejs2.html` to visually verify app rendering on the watch display.
+
+```bash
+npm run test:emulator
+```
+
+Emulator tests live in `tests/emulator/`. They navigate to the emulator page, inject JavaScript via `Module.ccall`, and take screenshots of the `canvas#gfxcanvas` element (240x240 watch display).
+
+To update screenshot baselines after intentional changes:
+
+```bash
+npx playwright test --update-snapshots
+```
+
+### Run All Tests
+
+```bash
+npm run test:all
+```
 
 ## Git Workflow
 
