@@ -17,7 +17,7 @@
   "remoteEnv": {
     "CLAUDE_CODE_OAUTH_TOKEN": "${localEnv:CLAUDE_CODE_OAUTH_TOKEN}"
   },
-  "runArgs": ["--cap-add=NET_ADMIN", "--init"],
+  "runArgs": ["--cap-add=NET_ADMIN", "--init", "--env-file", ".env"],
   "customizations": {
     "vscode": {
       "extensions": [
