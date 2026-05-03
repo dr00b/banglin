@@ -1,27 +1,14 @@
 const { test, expect } = require("@playwright/test");
 const fs = require("node:fs");
 const path = require("node:path");
-
-const EMULATOR_URL = "/ide/emu/emu_banglejs2.html";
+const { startEmulator, sendCode } = require("../../../tests/helpers/emulator");
 
 function read(rel) {
   return fs.readFileSync(path.resolve(__dirname, rel), "utf8");
 }
 
-async function typeCode(page, code) {
-  await page.evaluate((src) => {
-    for (let i = 0; i < src.length; i++) {
-      Module.ccall("jshPushIOCharEvent", "number", ["number", "number"],
-        [0xE0, src.charCodeAt(i)]);
-    }
-  }, code);
-}
-
 test("stormy status screen renders with pressure trend", async ({ page }) => {
-  await page.goto(EMULATOR_URL);
-  const canvas = page.locator("canvas#gfxcanvas");
-  await expect(canvas).toBeVisible({ timeout: 15000 });
-  await page.waitForTimeout(3000);
+  const canvas = await startEmulator(page);
 
   const trendLib = read("../../../lib/pressure-trend.js");
   const app = read("../app.js");
@@ -43,9 +30,9 @@ test("stormy status screen renders with pressure trend", async ({ page }) => {
     'require("Storage").writeJSON("stormy.log.json", ' + JSON.stringify(synthLog) + ');\n' +
     'g.clear();\n';
 
-  await typeCode(page, bootstrap);
+  await sendCode(page, bootstrap);
   await page.waitForTimeout(500);
-  await typeCode(page, app + "\n");
+  await sendCode(page, app + "\n");
   await page.waitForTimeout(1500);
 
   await expect(canvas).toHaveScreenshot("stormy-status.png", {
