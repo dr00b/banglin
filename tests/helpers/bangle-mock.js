@@ -39,7 +39,8 @@ function install(overrides) {
     setBarometerPower: function() { return true; },
     buzz: function() { return Promise.resolve(); },
     loadWidgets: function() {},
-    drawWidgets: function() {}
+    drawWidgets: function() {},
+    setUI: function() {}
   }, overrides.Bangle || {});
 
   var E = Object.assign({

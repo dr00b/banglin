@@ -14,10 +14,13 @@
   function loadLog() { return S.readJSON(LOG_FILE, 1) || []; }
 
   function loadTrend() {
-    var code = S.read("stormy.trend.js");
-    if (!code) return null;
-    eval(code);
-    return (typeof stormyTrend !== "undefined") ? stormyTrend : null;
+    try {
+      var code = S.read("stormy.trend.js");
+      if (!code) return null;
+      var module, exports; // jshint ignore:line
+      eval(code);
+      return (typeof stormyTrend !== "undefined") ? stormyTrend : (global && global.stormyTrend) || null;
+    } catch (e) { return null; }
   }
 
   function fmt(v, digits) {
@@ -39,7 +42,7 @@
     g.drawString(/*LANG*/"Pressure (24h)", 120, 28);
     if (log.length < 2) {
       g.drawString(/*LANG*/"Not enough data", 120, 110);
-      setWatch(function() { showMenu(); }, BTN, {repeat:false});
+      Bangle.setUI("updown", function() { showMenu(); });
       return;
     }
     var x0 = 20, y0 = 180, w = 200, h = 120;
@@ -67,8 +70,8 @@
     g.drawString(fmt(maxP) + " hPa", x0, y0 - h - 10);
     g.drawString(fmt(minP) + " hPa", x0, y0 + 2);
     g.setFontAlign(0, -1);
-    g.drawString(/*LANG*/"Press BTN to return", 120, 200);
-    setWatch(function() { showMenu(); }, BTN, {repeat:false});
+    g.drawString(/*LANG*/"Swipe or press to return", 120, 200);
+    Bangle.setUI("updown", function() { showMenu(); });
   }
 
   function testBuzz() {

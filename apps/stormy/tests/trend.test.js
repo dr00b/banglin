@@ -156,3 +156,129 @@ test("summarize returns trend=falling for pressure drop", function() {
   assert.strictEqual(s.trend, "falling");
   assert.ok(s.dp3h != null && s.dp3h < 0);
 });
+
+test("summarize returns trend=rising for rising pressure", function() {
+  const log = droppingLog(1010, 1014, 3);
+  const s = trend.summarize(log);
+  assert.strictEqual(s.trend, "rising");
+  assert.ok(s.dp3h != null && s.dp3h > 0);
+});
+
+test("summarize returns trend=steady for <1 hPa change", function() {
+  const log = droppingLog(1013, 1012.6, 3);
+  const s = trend.summarize(log);
+  assert.strictEqual(s.trend, "steady");
+});
+
+test("summarize returns unknown for empty log", function() {
+  const s = trend.summarize([]);
+  assert.strictEqual(s.trend, "unknown");
+  assert.strictEqual(s.p, null);
+  assert.strictEqual(s.T, null);
+});
+
+test("detect returns no alerts for empty log", function() {
+  const r = trend.detect({ log: [], now: nowMin() });
+  assert.strictEqual(r.anyFired, false);
+  assert.strictEqual(r.shouldBuzz, false);
+});
+
+test("detect returns no alerts when log has only one entry", function() {
+  const r = trend.detect({
+    log: [{ t: nowMin(), p: 1013, T: 18, h: null, pr: null }],
+    now: nowMin()
+  });
+  assert.strictEqual(r.anyFired, false);
+});
+
+test("pressure alert uses custom threshold from settings", function() {
+  // Drop of 2 hPa — fires at threshold 1.5, silent at threshold 3.0
+  const log = droppingLog(1013, 1011, 3);
+
+  const rFires = trend.detect({
+    log, now: nowMin(),
+    settings: { pressureDropHpa3h: 1.5 }
+  });
+  assert.ok(rFires.fired.includes("pressure"), "fires at lower threshold");
+
+  const rSilent = trend.detect({
+    log, now: nowMin(),
+    settings: { pressureDropHpa3h: 3.0 }
+  });
+  assert.strictEqual(rSilent.fired.indexOf("pressure"), -1, "silent at higher threshold");
+});
+
+test("temperature alert uses custom threshold from settings", function() {
+  const log = tempSwingLog(18, 24);  // 6 C swing
+
+  const rFires = trend.detect({
+    log, now: nowMin(),
+    settings: { tempSwingC6h: 5.0 }
+  });
+  assert.ok(rFires.fired.includes("temperature"), "fires at lower threshold");
+
+  const rSilent = trend.detect({
+    log, now: nowMin(),
+    settings: { tempSwingC6h: 8.0 }
+  });
+  assert.strictEqual(rSilent.fired.indexOf("temperature"), -1, "silent at higher threshold");
+});
+
+test("summarize exposes dp3h, dT6h, dh6h deltas", function() {
+  const n = nowMin();
+  const log = [];
+  for (let i = 0; i <= 36; i++) {
+    log.push({ t: n - (36 - i) * 10, p: 1013 - i * 0.1, T: 18 + i * 0.1, h: 40 + i * 0.3, pr: null });
+  }
+  const s = trend.summarize(log);
+  assert.ok(s.dp3h != null, "dp3h present");
+  assert.ok(s.dT6h != null, "dT6h present");
+  assert.ok(s.dh6h != null, "dh6h present");
+  assert.ok(s.dp3h < 0, "pressure dropped");
+  assert.ok(s.dT6h > 0, "temperature rose");
+});
+
+test("precipNext3h returns null when forecast is empty", function() {
+  assert.strictEqual(trend.precipNext3h(null, nowMin()), null);
+  assert.strictEqual(trend.precipNext3h({}, nowMin()), null);
+  assert.strictEqual(trend.precipNext3h({ hourly: { time: [] } }, nowMin()), null);
+});
+
+test("precipNext3h returns null when all entries are outside the 3h window", function() {
+  const n = nowMin();
+  const nowMs = n * 60000;
+  const forecast = {
+    hourly: {
+      time: [new Date(nowMs - 3600000).toISOString()],  // 1h in the past
+      precipitation: [5.0]
+    }
+  };
+  assert.strictEqual(trend.precipNext3h(forecast, n), null);
+});
+
+test("precipNext3h returns max precip within 3h window", function() {
+  const n = nowMin();
+  const nowMs = n * 60000;
+  const forecast = {
+    hourly: {
+      time: [
+        new Date(nowMs + 30 * 60000).toISOString(),   // +30 min
+        new Date(nowMs + 90 * 60000).toISOString(),   // +90 min
+        new Date(nowMs + 150 * 60000).toISOString()   // +150 min
+      ],
+      precipitation: [0.5, 3.0, 1.2]
+    }
+  };
+  assert.strictEqual(trend.precipNext3h(forecast, n), 3.0, "returns max");
+});
+
+test("no cooldown (lastAlertMin null) always allows buzz", function() {
+  const log = droppingLog(1015, 1011.5, 3);
+  const r = trend.detect({ log, now: nowMin(), lastAlertMin: null });
+  assert.strictEqual(r.shouldBuzz, true, "buzzes when no prior alert");
+});
+
+test("latest returns null for empty log", function() {
+  assert.strictEqual(trend.latest([]), null);
+  assert.strictEqual(trend.latest(null), null);
+});

@@ -42,6 +42,9 @@
     try {
       var code = S.read("stormy.trend.js");
       if (!code) return null;
+      // Declare module/exports locally so the UMD pattern's Espruino branch fires
+      // (sets root.stormyTrend) rather than the Node.js branch (module.exports).
+      var module, exports; // jshint ignore:line
       eval(code);
       return (typeof stormyTrend !== "undefined") ? stormyTrend : (global && global.stormyTrend) || null;
     } catch (e) { return null; }
@@ -77,6 +80,9 @@
   function doSample() {
     var settings = loadSettings();
     if (!settings.enabled) return;
+    var d = new Date(Date.now());
+    var nowMs = d.getHours() * 3600000 + d.getMinutes() * 60000 + d.getSeconds() * 1000;
+    if (isInSleepWindow(settings, nowMs)) return;
     samplePressure(function(p) {
       if (!p) return;
       var nowMin = Math.floor(Date.now() / 60000);
@@ -112,6 +118,14 @@
         buzzAlert();
       }
     });
+  }
+
+  function isInSleepWindow(settings, nowMs) {
+    var start = settings.sleepStart;
+    var end = settings.sleepEnd;
+    if (start == null || end == null) return false;
+    if (start < end) return nowMs >= start && nowMs < end;
+    return nowMs >= start || nowMs < end;
   }
 
   function loadWeatherFetch() {

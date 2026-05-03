@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "node --test \"apps/**/tests/*.test.js\"",
+    "test": "node --test $(find apps -path '*/tests/*.test.js' | tr '\\n' ' ') $(find lib -name '*.test.js' 2>/dev/null | tr '\\n' ' ')",
     "test:emulator": "npx playwright test",
     "test:all": "npm test && npm run test:emulator"
   },
