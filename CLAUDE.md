@@ -256,16 +256,39 @@ Consider power consumption when using various tools. Turn off when not used.
 
 ## Development Environment
 
-### Devcontainer (Claude Code hosted VMs + VS Code)
+### Devcontainer (local Ubuntu host or Claude Code hosted VMs)
 
-The project includes a devcontainer at `.devcontainer/devcontainer.json`. This is used automatically by Claude Code hosted VMs and can be opened locally in VS Code via "Reopen in Container".
+The project ships a custom devcontainer at `.devcontainer/Dockerfile` + `.devcontainer/devcontainer.json`. Open the repo in VS Code (locally or via Remote-SSH to an Ubuntu box with Docker Engine installed) and choose "Reopen in Container".
 
-The container provides:
+Baked into the image:
 - Node.js 20
-- Playwright + Chromium (for emulator visual tests)
-- npm scripts for testing
+- Claude Code CLI (`@anthropic-ai/claude-code`)
+- Playwright + Chromium (system libs already installed; `npx playwright install chromium` prebaked)
+- `http-server` (handy for serving the BangleApps emulator at `/home/node/BangleApps`)
+- `git-delta`, `gh`, `jq`, zsh + fzf, nano, vim, dnsutils
 
-On container creation, `npm install` and `npx playwright install chromium --with-deps` run automatically.
+On container creation, `postCreateCommand` runs `npm install` to pull workspace dev dependencies (`@playwright/test`).
+
+#### Authentication
+
+Claude Code is preinstalled but unauthenticated. Auth is plumbed via `remoteEnv` — nothing is committed to the repo:
+
+1. On a machine with a browser: `npm install -g @anthropic-ai/claude-code && claude setup-token` (prints a long-lived OAuth token).
+2. Export it in the shell that launches VS Code (e.g. add to `~/.zshrc` or `~/.bashrc`):
+   ```bash
+   export CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...
+   ```
+3. Reopen the project in the container. `claude /status` should show authenticated.
+
+For pay-as-you-go billing, swap to `ANTHROPIC_API_KEY` and add it to `remoteEnv` in `devcontainer.json`.
+
+#### Cold-start cost
+
+First build is multi-minute (apt installs, Chromium download, BangleApps clone). Subsequent rebuilds are fast — Docker layer caching keeps everything except `npm install` (which `postCreateCommand` re-runs).
+
+#### Optional network firewall
+
+The Dockerfile contains a commented-out block that wires up `init-firewall.sh` (the Claude Code reference outbound-allowlist firewall). To enable, drop the script into `.devcontainer/` and uncomment the `COPY` + `chmod` lines. `--cap-add=NET_ADMIN` is already in `runArgs`.
 
 ### Prerequisites (local host)
 
