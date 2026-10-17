@@ -37,15 +37,19 @@
     var log = loadLog();
     g.clear();
     Bangle.drawWidgets();
+    var R = Bangle.appRect;
+    var cx = R.x + R.w / 2;
     g.setFont("6x8", 1);
     g.setFontAlign(0, -1);
-    g.drawString(/*LANG*/"Pressure (24h)", 120, 28);
+    g.drawString(/*LANG*/"Pressure (24h)", cx, R.y + 2);
     if (log.length < 2) {
-      g.drawString(/*LANG*/"Not enough data", 120, 110);
+      g.drawString(/*LANG*/"Not enough data", cx, R.y + R.h / 2);
       Bangle.setUI("updown", function() { showMenu(); });
       return;
     }
-    var x0 = 20, y0 = 180, w = 200, h = 120;
+    // Leave rows for the title + max label above, min label + hint below.
+    var x0 = R.x + 4, w = R.w - 9;
+    var y0 = R.y2 - 22, h = y0 - (R.y + 24);
     var minP = log[0].p, maxP = log[0].p;
     for (var i = 1; i < log.length; i++) {
       if (log[i].p < minP) minP = log[i].p;
@@ -69,8 +73,8 @@
     g.setFontAlign(-1, -1);
     g.drawString(fmt(maxP) + " hPa", x0, y0 - h - 10);
     g.drawString(fmt(minP) + " hPa", x0, y0 + 2);
-    g.setFontAlign(0, -1);
-    g.drawString(/*LANG*/"Swipe or press to return", 120, 200);
+    g.setFontAlign(0, 1);
+    g.drawString(/*LANG*/"Swipe or press to return", cx, R.y2);
     Bangle.setUI("updown", function() { showMenu(); });
   }
 

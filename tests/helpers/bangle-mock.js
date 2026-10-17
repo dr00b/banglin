@@ -40,7 +40,8 @@ function install(overrides) {
     buzz: function() { return Promise.resolve(); },
     loadWidgets: function() {},
     drawWidgets: function() {},
-    setUI: function() {}
+    setUI: function() {},
+    appRect: { x: 0, y: 24, w: 176, h: 152, x2: 175, y2: 175 }
   }, overrides.Bangle || {});
 
   var E = Object.assign({

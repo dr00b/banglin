@@ -7,20 +7,67 @@
   "icon": "app.png",
   "tags": "tool,health,widget",
   "type": "app",
-  "supports": ["BANGLEJS2"],
+  "supports": [
+    "BANGLEJS2"
+  ],
   "readme": "README.md",
-  "dependencies": {"scheduler": "type"},
+  "dependencies": {
+    "scheduler": "type"
+  },
   "storage": [
-    {"name": "stormy.app.js", "url": "app.js"},
-    {"name": "stormy.wid.js", "url": "widget.js"},
-    {"name": "stormy.boot.js", "url": "boot.js"},
-    {"name": "stormy.settings.js", "url": "settings.js"},
-    {"name": "stormy.img", "url": "app-icon.js", "evaluate": true},
-    {"name": "stormy.trend.js", "url": "../../lib/pressure-trend.js"},
-    {"name": "stormy.wfetch.js", "url": "../../lib/weather-fetch.js"}
+    {
+      "name": "stormy.app.js",
+      "url": "app.js"
+    },
+    {
+      "name": "stormy.wid.js",
+      "url": "widget.js"
+    },
+    {
+      "name": "stormy.boot.js",
+      "url": "boot.js"
+    },
+    {
+      "name": "stormy.settings.js",
+      "url": "settings.js"
+    },
+    {
+      "name": "stormy.img",
+      "url": "app-icon.js",
+      "evaluate": true
+    },
+    {
+      "name": "stormy.trend.js",
+      "url": "../../lib/pressure-trend.js"
+    },
+    {
+      "name": "stormy.wfetch.js",
+      "url": "../../lib/weather-fetch.js"
+    }
   ],
   "data": [
-    {"name": "stormy.json"},
-    {"name": "stormy.log.json"}
+    {
+      "name": "stormy.json"
+    },
+    {
+      "name": "stormy.log.json"
+    }
+  ],
+  "screenshots": [
+    {
+      "url": "screenshot-status.png"
+    },
+    {
+      "url": "screenshot-graph.png"
+    },
+    {
+      "url": "screenshot-settings.png"
+    },
+    {
+      "url": "screenshot-settings-forecast.png"
+    },
+    {
+      "url": "screenshot-widget.png"
+    }
   ]
 }
