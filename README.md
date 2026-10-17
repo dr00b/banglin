@@ -7,6 +7,13 @@ Personal smart watch apps for [Bangle.js](https://banglejs.com/).
 - **[stormy](apps/stormy/README.md)** — informational alerts for weather shifts
   (pressure, temperature; optional humidity/precipitation via phone forecast)
   that may provoke arthritis flares.
+- **[gesture_symptoms](apps/gesture_symptoms/README.md)** (Gesture Log) — log
+  that something happened, with a severity of 1–5, by twisting your wrist.
+  Uses the onboard TensorFlow when a trained model is installed
+  ([training tool](tools/gesture-train/README.md)).
+
+Regenerate the app-loader screenshots (rendered in the real emulator
+firmware) with `npm run screenshots`.
 
 ## Tests
 
