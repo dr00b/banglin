@@ -265,14 +265,22 @@ npm install                        # @playwright/test
 npx playwright install chromium    # browser for the emulator tests / screenshots
 ```
 
-You also need a Bangle.js 2, and either the [Espruino Web IDE](https://www.espruino.com/ide/) (Chrome, Web Bluetooth) or the [espruino CLI](https://www.npmjs.com/package/espruino).
+You also need a Bangle.js 2 and a Bluetooth adapter. The [espruino CLI](https://www.npmjs.com/package/espruino) is a dev dependency (used by `npm run dev`); the [Espruino Web IDE](https://www.espruino.com/ide/) works as a fallback.
 
-### Deploying to Watch
+### Prototyping on the watch
+
+`npm run dev` installs an app straight from `apps/<appid>` over Bluetooth, restarts into it, streams the watch's console (`print`, errors) to your terminal, and re-uploads only the changed files each time you save:
 
 ```bash
-npm install -g espruino
-espruino --port BT apps/myapp/app.js
+npx espruino --list                                    # find the watch, e.g. "Bangle.js 1a2b"
+npm run dev -- gesture_symptoms --port "Bangle.js 1a2b"
 ```
+
+- `--ram` sends only `app.js` to RAM (after running the installed boot file): no flash writes, fastest for UI work once the app is installed.
+- `--once` installs and exits. `--dry` just writes `.dev/<appid>.js`, which can be pasted into the Web IDE.
+- `scripts/dev.js` reads `metadata.json` like the app loader: `storage` entries (including `../../lib/*`), `evaluate` icons, and a `bootupdate.js` rebuild when a `.boot.js` file changes.
+
+Ctrl-C twice to exit the console.
 
 ### Reference
 

@@ -15,6 +15,18 @@ Personal smart watch apps for [Bangle.js](https://banglejs.com/).
 Regenerate the app-loader screenshots (rendered in the real emulator
 firmware) with `npm run screenshots`.
 
+## Prototyping on the watch
+
+```bash
+npm install
+npx espruino --list                                    # find your watch
+npm run dev -- gesture_symptoms --port "Bangle.js 1a2b"
+```
+
+Installs the app over Bluetooth, restarts into it, streams the watch's
+console, and re-uploads changed files on every save. Add `--ram` to iterate
+on `app.js` without flash writes. See [CLAUDE.md](CLAUDE.md#prototyping-on-the-watch).
+
 ## Tests
 
 ```bash

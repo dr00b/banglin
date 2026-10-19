@@ -6,3 +6,4 @@ __pycache__/
 .venv/
 tools/gesture-train/out*/
 tools/gesture-train/*.csv
+.dev/
