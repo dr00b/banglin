@@ -6,7 +6,6 @@ module.exports = defineConfig({
   outputDir: "./test-results",
   use: {
     baseURL: "https://www.espruino.com",
-    ignoreHTTPSErrors: true,
     screenshot: "on",
     video: "retain-on-failure"
   }

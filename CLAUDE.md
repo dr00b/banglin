@@ -256,48 +256,18 @@ Consider power consumption when using various tools. Turn off when not used.
 
 ## Development Environment
 
-### Devcontainer (local Ubuntu host or Claude Code hosted VMs)
+### Local setup
 
-The project ships a custom devcontainer at `.devcontainer/Dockerfile` + `.devcontainer/devcontainer.json`. Open the repo in VS Code (locally or via Remote-SSH to an Ubuntu box with Docker Engine installed) and choose "Reopen in Container".
+Everything runs on your desktop:
 
-Baked into the image:
-- Node.js 20
-- Claude Code CLI (`@anthropic-ai/claude-code`)
-- Playwright + Chromium (system libs already installed; `npx playwright install chromium` prebaked)
-- `http-server` (handy for serving the BangleApps emulator at `/home/node/BangleApps`)
-- `git-delta`, `gh`, `jq`, zsh + fzf, nano, vim, dnsutils
+```bash
+npm install                        # @playwright/test
+npx playwright install chromium    # browser for the emulator tests / screenshots
+```
 
-On container creation, `postCreateCommand` runs `npm install` to pull workspace dev dependencies (`@playwright/test`).
-
-#### Authentication
-
-Claude Code is preinstalled but unauthenticated. Auth is plumbed via `remoteEnv` — nothing is committed to the repo:
-
-1. On a machine with a browser: `npm install -g @anthropic-ai/claude-code && claude setup-token` (prints a long-lived OAuth token).
-2. Export it in the shell that launches VS Code (e.g. add to `~/.zshrc` or `~/.bashrc`):
-   ```bash
-   export CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...
-   ```
-3. Reopen the project in the container. `claude /status` should show authenticated.
-
-For pay-as-you-go billing, swap to `ANTHROPIC_API_KEY` and add it to `remoteEnv` in `devcontainer.json`.
-
-#### Cold-start cost
-
-First build is multi-minute (apt installs, Chromium download, BangleApps clone). Subsequent rebuilds are fast — Docker layer caching keeps everything except `npm install` (which `postCreateCommand` re-runs).
-
-#### Optional network firewall
-
-The Dockerfile contains a commented-out block that wires up `init-firewall.sh` (the Claude Code reference outbound-allowlist firewall). To enable, drop the script into `.devcontainer/` and uncomment the `COPY` + `chmod` lines. `--cap-add=NET_ADMIN` is already in `runArgs`.
-
-### Prerequisites (local host)
-
-- [Espruino Web IDE](https://www.espruino.com/ide/) or [espruino CLI tools](https://www.npmjs.com/package/espruino)
-- A Bangle.js device (or the emulator at https://www.espruino.com/ide/emulator.html)
+You also need a Bangle.js 2, and either the [Espruino Web IDE](https://www.espruino.com/ide/) (Chrome, Web Bluetooth) or the [espruino CLI](https://www.npmjs.com/package/espruino).
 
 ### Deploying to Watch
-
-Deployment to the physical watch runs on the **host machine** (not inside the devcontainer), because Bluetooth LE access is impractical inside a container.
 
 ```bash
 npm install -g espruino
@@ -320,7 +290,7 @@ Use Node.js built-in test runner (`node:test`). No external test framework neede
 npm test
 ```
 
-Unit tests live in `tests/unit/` and use `node:test` + `node:assert`. When app code exists, add a Bangle.js API mock in `tests/helpers/bangle-mock.js` to stub globals like `Bangle`, `E`, `g`, and `require("Storage")`.
+Unit tests live next to each app in `apps/<appid>/tests/*.test.js` and use `node:test` + `node:assert`. `tests/helpers/bangle-mock.js` stubs globals like `Bangle`, `E`, `g`, and `require("Storage")`.
 
 ### Visual / Emulator Tests
 
@@ -330,7 +300,13 @@ Playwright drives the Bangle.js web emulator at `espruino.com/ide/emu/emu_bangle
 npm run test:emulator
 ```
 
-Emulator tests live in `tests/emulator/`. They navigate to the emulator page, inject JavaScript via `Module.ccall`, and take screenshots of the `canvas#gfxcanvas` element (240x240 watch display).
+Emulator specs live in `tests/emulator/` and `apps/<appid>/tests/*.spec.js`. `tests/helpers/emulator.js` boots the emulator page and injects code; specs then screenshot the `canvas#gfxcanvas` element (176x176 watch display).
+
+App-loader screenshots (`apps/<appid>/screenshot-*.png`) are rendered the same way from the scenes in `apps/<appid>/tests/screenshots.js`:
+
+```bash
+npm run screenshots [-- <appid>]
+```
 
 To update screenshot baselines after intentional changes:
 

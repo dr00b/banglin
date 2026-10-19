@@ -6,7 +6,6 @@
 //   [{ name: "status", code: "<Espruino code to run>", wait: 1500 }, ...]
 //
 // Usage: npm run screenshots [-- <appid> ...]
-// Set CHROMIUM_PATH to use a system Chromium instead of Playwright's download.
 
 const fs = require("node:fs");
 const path = require("node:path");
@@ -35,7 +34,7 @@ function captureSerial(page) {
 }
 
 async function renderScene(browser, appId, scene) {
-  const page = await browser.newPage({ baseURL: BASE_URL, ignoreHTTPSErrors: true });
+  const page = await browser.newPage({ baseURL: BASE_URL });
   const serial = captureSerial(page);
   const canvas = await startEmulator(page);
   await sendCode(page, prelude());
@@ -53,9 +52,7 @@ async function renderScene(browser, appId, scene) {
 
 async function main() {
   const filter = process.argv.slice(2);
-  const browser = await chromium.launch(
-    process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}
-  );
+  const browser = await chromium.launch();
   let failed = false;
   try {
     for (const appId of appsToRender(filter)) {

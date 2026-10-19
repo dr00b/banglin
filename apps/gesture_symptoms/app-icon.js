@@ -13,5 +13,5 @@
   g.setColor(1).fillCircle(24, 24, 10);
   g.setColor(0).fillCircle(24, 24, 8);
   g.setColor(1).fillCircle(24, 24, 3);
-  return g.asImage();
+  return g.asImage("string");
 })()

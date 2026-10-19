@@ -30,10 +30,5 @@ after intentional UI changes) with:
 npx playwright test --update-snapshots
 ```
 
-Headless browsers in minimal sandboxes sometimes fail to render the
-espruino.com emulator canvas; if your captures come out blank, run the
-emulator tests on a desktop Chromium / the devcontainer rather than a
-fully-headless CI worker.
-
 See [CLAUDE.md](CLAUDE.md) for project conventions and the Bangle.js /
 Espruino patterns used here.
