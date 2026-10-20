@@ -15,6 +15,8 @@ Personal smart watch apps for [Bangle.js](https://banglejs.com/).
   same log, tapped instead of twisted: two quick taps and a spaced third arm
   it, then one tap per severity point. Detection happens inside the
   accelerometer's own tap engine, so it costs almost no battery.
+- **[mr-morse](apps/mr-morse/README.md)** — a fork of Tap Log with its own
+  protocol library, log and settings, for growing a richer tap language.
 
 Regenerate the app-loader screenshots (rendered in the real emulator
 firmware) with `npm run screenshots`.
