@@ -16,7 +16,28 @@ function createStorageMock(initial) {
       try { return JSON.parse(raw); }
       catch (e) { if (noErr) return undefined; throw e; }
     },
-    erase: function(name) { delete files[name]; }
+    erase: function(name) { delete files[name]; },
+    list: function(re) {
+      return Object.keys(files).filter(function(n) { return !re || re.test(n); });
+    },
+    // StorageFile: append-only text file read back line by line.
+    open: function(name, mode) {
+      var pos = 0;
+      if (mode === "w") files[name] = "";
+      return {
+        write: function(data) { files[name] = (files[name] || "") + data; },
+        readLine: function() {
+          var s = files[name] || "";
+          if (pos >= s.length) return undefined;
+          var nl = s.indexOf("\n", pos);
+          var end = nl < 0 ? s.length : nl + 1;
+          var line = s.substring(pos, end);
+          pos = end;
+          return line;
+        },
+        erase: function() { delete files[name]; }
+      };
+    }
   };
 }
 
@@ -39,14 +60,24 @@ function install(overrides) {
     setBarometerPower: function() { return true; },
     buzz: function() { return Promise.resolve(); },
     loadWidgets: function() {},
-    drawWidgets: function() {}
+    drawWidgets: function() {},
+    setUI: function() {},
+    setOptions: function() {},
+    setPollInterval: function() {},
+    isLocked: function() { return true; },
+    isLCDOn: function() { return false; },
+    setLocked: function() {},
+    accelRd: function() { return 0x80; },
+    accelWr: function() {},
+    appRect: { x: 0, y: 24, w: 176, h: 152, x2: 175, y2: 175 }
   }, overrides.Bangle || {});
 
   var E = Object.assign({
     showMenu: function(m) { return m; },
     showMessage: function() {},
     showAlert: function() { return Promise.resolve(); },
-    showPrompt: function() { return Promise.resolve(true); }
+    showPrompt: function() { return Promise.resolve(true); },
+    clip: function(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
   }, overrides.E || {});
 
   global.Bangle = Bangle;
@@ -54,10 +85,14 @@ function install(overrides) {
   global.WIDGETS = widgets;
   global.g = overrides.g || {
     theme: { dark: true, fg: "#fff", bg: "#000" },
-    clear: function() {}, reset: function() {},
+    clear: function() { return this; }, reset: function() { return this; },
+    clearRect: function() { return this; },
+    setPixel: function() { return this; },
+    drawCircle: function() { return this; },
     setColor: function() { return this; },
     setFont: function() { return this; },
     setFontAlign: function() { return this; },
+    stringWidth: function(s) { return String(s).length * 6; },
     drawString: function() { return this; },
     drawLine: function() { return this; },
     drawRect: function() { return this; },

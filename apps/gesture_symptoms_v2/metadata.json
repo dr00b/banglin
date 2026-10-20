@@ -1,0 +1,66 @@
+{
+  "id": "gesture_symptoms_v2",
+  "name": "Gesture Log v2",
+  "shortName": "Tap Log",
+  "version": "0.01",
+  "description": "Log that something happened, with a severity 1-5, by tapping the watch. A double tap plus a single tap arms it; the taps after that are the severity. Uses the accelerometer's own tap detector, so it costs almost no power.",
+  "icon": "app.png",
+  "tags": "tool,health,widget",
+  "type": "app",
+  "supports": [
+    "BANGLEJS2"
+  ],
+  "readme": "README.md",
+  "storage": [
+    {
+      "name": "gsym2.app.js",
+      "url": "app.js"
+    },
+    {
+      "name": "gsym2.boot.js",
+      "url": "boot.js"
+    },
+    {
+      "name": "gsym2.wid.js",
+      "url": "widget.js"
+    },
+    {
+      "name": "gsym2.settings.js",
+      "url": "settings.js"
+    },
+    {
+      "name": "gsym2.img",
+      "url": "app-icon.js",
+      "evaluate": true
+    },
+    {
+      "name": "gsym2.tapseq.js",
+      "url": "../../lib/tap-protocol.js"
+    }
+  ],
+  "data": [
+    {
+      "name": "gsym2.json"
+    },
+    {
+      "name": "gsym2.log.json"
+    }
+  ],
+  "screenshots": [
+    {
+      "url": "screenshot-main.png"
+    },
+    {
+      "url": "screenshot-live.png"
+    },
+    {
+      "url": "screenshot-events.png"
+    },
+    {
+      "url": "screenshot-settings.png"
+    },
+    {
+      "url": "screenshot-widget.png"
+    }
+  ]
+}

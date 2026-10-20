@@ -1,7 +1,7 @@
 const { test, expect } = require("@playwright/test");
 const fs = require("node:fs");
 const path = require("node:path");
-const { startEmulator, sendCode } = require("../../../tests/helpers/emulator");
+const { startEmulator, sendCode, canvasPng } = require("../../../tests/helpers/emulator");
 
 function read(rel) {
   return fs.readFileSync(path.resolve(__dirname, rel), "utf8");
@@ -35,7 +35,7 @@ test("stormy status screen renders with pressure trend", async ({ page }) => {
   await sendCode(page, app + "\n");
   await page.waitForTimeout(1500);
 
-  await expect(canvas).toHaveScreenshot("stormy-status.png", {
+  expect(await canvasPng(canvas)).toMatchSnapshot("stormy-status.png", {
     maxDiffPixelRatio: 0.05
   });
 });

@@ -3,11 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "node --test \"apps/**/tests/*.test.js\"",
+    "dev": "node scripts/dev.js",
+    "test": "node --test $(find apps -path '*/tests/*.test.js') $(find lib scripts -name '*.test.js' 2>/dev/null)",
     "test:emulator": "npx playwright test",
-    "test:all": "npm test && npm run test:emulator"
+    "test:all": "npm test && npm run test:emulator",
+    "screenshots": "node scripts/screenshots.js"
   },
   "devDependencies": {
-    "@playwright/test": "^1.52.0"
+    "@playwright/test": "^1.52.0",
+    "espruino": "^0.1.67"
   }
 }

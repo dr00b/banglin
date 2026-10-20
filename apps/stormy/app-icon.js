@@ -7,5 +7,5 @@
   g.fillRect(14, 24, 34, 34);
   g.setColor(0);
   g.fillPoly([26,26, 32,26, 28,34, 34,34, 22,46, 26,34, 22,34]);
-  return g.asImage();
+  return g.asImage("string");
 })()

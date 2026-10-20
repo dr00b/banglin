@@ -2,4 +2,8 @@ node_modules/
 test-results/
 playwright-report/
 .env
-.devcontainer/.env
+__pycache__/
+.venv/
+tools/gesture-train/out*/
+tools/gesture-train/*.csv
+.dev/
