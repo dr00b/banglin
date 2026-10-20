@@ -11,6 +11,10 @@ Personal smart watch apps for [Bangle.js](https://banglejs.com/).
   log that something happened, with a severity of 1–5, by twisting your wrist.
   Uses the onboard TensorFlow when a trained model is installed
   ([training tool](tools/gesture-train/README.md)).
+- **[gesture_symptoms_v2](apps/gesture_symptoms_v2/README.md)** (Tap Log) — the
+  same log, tapped instead of twisted: two quick taps and a spaced third arm
+  it, then one tap per severity point. Detection happens inside the
+  accelerometer's own tap engine, so it costs almost no battery.
 
 Regenerate the app-loader screenshots (rendered in the real emulator
 firmware) with `npm run screenshots`.
@@ -20,7 +24,7 @@ firmware) with `npm run screenshots`.
 ```bash
 npm install
 npx espruino --list                                    # find your watch
-npm run dev -- gesture_symptoms_v1 --port "Bangle.js 1a2b"
+npm run dev -- gesture_symptoms_v2 --port "Bangle.js 1a2b"
 ```
 
 Installs the app over Bluetooth, restarts into it, streams the watch's

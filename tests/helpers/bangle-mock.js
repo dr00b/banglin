@@ -64,6 +64,11 @@ function install(overrides) {
     setUI: function() {},
     setOptions: function() {},
     setPollInterval: function() {},
+    isLocked: function() { return true; },
+    isLCDOn: function() { return false; },
+    setLocked: function() {},
+    accelRd: function() { return 0x80; },
+    accelWr: function() {},
     appRect: { x: 0, y: 24, w: 176, h: 152, x2: 175, y2: 175 }
   }, overrides.Bangle || {});
 
