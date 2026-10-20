@@ -41,4 +41,13 @@ async function sendCode(page, code) {
   }
 }
 
-module.exports = { EMULATOR_URL, startEmulator, sendCode };
+// Read the canvas's own pixels rather than screenshotting the element. The
+// emulator page sizes the canvas with CSS (it has changed over time, and
+// scales with the device), so an element screenshot is whatever size the page
+// feels like; the pixels are always the watch's native 176x176.
+async function canvasPng(canvas) {
+  const dataUrl = await canvas.evaluate((c) => c.toDataURL("image/png"));
+  return Buffer.from(dataUrl.split(",")[1], "base64");
+}
+
+module.exports = { EMULATOR_URL, startEmulator, sendCode, canvasPng };

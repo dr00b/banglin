@@ -10,7 +10,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { chromium } = require("@playwright/test");
-const { startEmulator, sendCode } = require("../tests/helpers/emulator");
+const { startEmulator, sendCode, canvasPng } = require("../tests/helpers/emulator");
 const { prelude } = require("../tests/helpers/emulator-mocks");
 
 const ROOT = path.resolve(__dirname, "..");
@@ -41,10 +41,7 @@ async function renderScene(browser, appId, scene) {
   await sendCode(page, scene.code);
   await page.waitForTimeout(scene.wait || 1500);
   const file = path.join(ROOT, "apps", appId, "screenshot-" + scene.name + ".png");
-  // Read the canvas pixels directly so the PNG is the watch's native
-  // 176x176, not the page's scaled-up rendering.
-  const dataUrl = await canvas.evaluate((c) => c.toDataURL("image/png"));
-  fs.writeFileSync(file, Buffer.from(dataUrl.split(",")[1], "base64"));
+  fs.writeFileSync(file, await canvasPng(canvas));
   const errors = serial().split("\n").filter((l) => !l.startsWith(">") && /Uncaught|^Error|WARNING/.test(l));
   await page.close();
   return { file, errors };
