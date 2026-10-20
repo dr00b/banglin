@@ -273,7 +273,7 @@ You also need a Bangle.js 2 and a Bluetooth adapter. The [espruino CLI](https://
 
 ```bash
 npx espruino --list                                    # find the watch, e.g. "Bangle.js 1a2b"
-npm run dev -- gesture_symptoms --port "Bangle.js 1a2b"
+npm run dev -- gesture_symptoms_v1 --port "Bangle.js 1a2b"
 ```
 
 - `--ram` sends only `app.js` to RAM (after running the installed boot file): no flash writes, fastest for UI work once the app is installed.

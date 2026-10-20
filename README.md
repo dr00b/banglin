@@ -7,8 +7,8 @@ Personal smart watch apps for [Bangle.js](https://banglejs.com/).
 - **[stormy](apps/stormy/README.md)** — informational alerts for weather shifts
   (pressure, temperature; optional humidity/precipitation via phone forecast)
   that may provoke arthritis flares.
-- **[gesture_symptoms](apps/gesture_symptoms/README.md)** (Gesture Log) — log
-  that something happened, with a severity of 1–5, by twisting your wrist.
+- **[gesture_symptoms_v1](apps/gesture_symptoms_v1/README.md)** (Twist Log) —
+  log that something happened, with a severity of 1–5, by twisting your wrist.
   Uses the onboard TensorFlow when a trained model is installed
   ([training tool](tools/gesture-train/README.md)).
 
@@ -20,7 +20,7 @@ firmware) with `npm run screenshots`.
 ```bash
 npm install
 npx espruino --list                                    # find your watch
-npm run dev -- gesture_symptoms --port "Bangle.js 1a2b"
+npm run dev -- gesture_symptoms_v1 --port "Bangle.js 1a2b"
 ```
 
 Installs the app over Bluetooth, restarts into it, streams the watch's

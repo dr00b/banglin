@@ -1,6 +1,6 @@
 // Background gesture engine. Runs at every app load, so it stays idle until
 // the firmware reports a gesture; the accelerometer stream is only read for
-// the few seconds of counting after a trigger. Exposed as global.GSYM so the
+// the few seconds of counting after a trigger. Exposed as global.GSYM1 so the
 // app and widget can show its state.
 (function() {
   var S = require("Storage");
@@ -14,13 +14,13 @@
     pauseInSleep: true,
     sleepStart: 23 * 3600000,
     sleepEnd: 7 * 3600000
-  }, S.readJSON("gsym.json", 1) || {});
+  }, S.readJSON("gsym1.json", 1) || {});
   if (!settings.enabled) return;
 
   var C = (function() {
     // Declared locally so the module's UMD wrapper takes the Espruino branch.
     var module, exports; // jshint ignore:line
-    var code = S.read("gsym.counter.js");
+    var code = S.read("gsym1.counter.js");
     if (!code) return null;
     eval(code);
     return global.gsymCounter;
@@ -31,7 +31,7 @@
   try { require("tensorflow"); hasTF = true; } catch (e) {}
 
   var countOpts = { enterDeg: settings.enterDeg, quietMs: settings.quietMs };
-  var GS = global.GSYM = {
+  var GS = global.GSYM1 = {
     settings: settings,
     state: "idle",       // "idle" | "counting"
     count: 0,
@@ -47,7 +47,7 @@
   var lastDir = 0, cooldownUntil = 0, counter, counterTimer, counterSrc;
 
   function notify(widget) {
-    if (widget && global.WIDGETS && WIDGETS.gsym) WIDGETS.gsym.draw();
+    if (widget && global.WIDGETS && WIDGETS.gsym1) WIDGETS.gsym1.draw();
     if (GS.onUpdate) GS.onUpdate();
   }
 
@@ -76,10 +76,10 @@
   }
 
   function logEvent(severity, src) {
-    var log = S.readJSON("gsym.log.json", 1) || [];
+    var log = S.readJSON("gsym1.log.json", 1) || [];
     log.push({ t: Math.round(Date.now() / 1000), s: severity, src: src });
     while (log.length > 500) log.shift();
-    S.writeJSON("gsym.log.json", log);
+    S.writeJSON("gsym1.log.json", log);
   }
 
   function onAccel(a) { check(counter.push(a.x, a.y, a.z, Date.now())); }

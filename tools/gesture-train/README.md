@@ -1,6 +1,6 @@
 # gesture-train
 
-Trains the TensorFlow model that **gesture_symptoms** uses to recognise its
+Trains the TensorFlow model that **gesture_symptoms_v1** uses to recognise its
 trigger gesture on the watch.
 
 ```
@@ -23,7 +23,7 @@ Gesture Log → **Record samples**:
 ## 2. Download the CSV
 
 Open the [Espruino Web IDE](https://www.espruino.com/ide/), connect, click
-the Storage icon and save `gsym.samples.csv`.
+the Storage icon and save `gsym1.samples.csv`.
 
 ## 3. Train
 
@@ -31,7 +31,7 @@ the Storage icon and save `gsym.samples.csv`.
 cd tools/gesture-train
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-python train.py ~/Downloads/gsym.samples.csv
+python train.py ~/Downloads/gsym1.samples.csv
 ```
 
 The script prints the class balance, the held-out validation accuracy, and a

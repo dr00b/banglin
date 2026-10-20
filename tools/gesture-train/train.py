@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Train the gesture_symptoms trigger model for Bangle.js TensorFlow.
+"""Train the gesture_symptoms_v1 trigger model for Bangle.js TensorFlow.
 
-Input: one or more gsym.samples.csv files recorded on the watch
+Input: one or more gsym1.samples.csv files recorded on the watch
 (Gesture Log > Record samples). Each row is
 
     label,n,x0,y0,z0,x1,y1,z1,...
@@ -137,7 +137,7 @@ def tflite_predict(tf, model_bytes, x):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("csv", nargs="+", help="gsym.samples.csv file(s) from the watch")
+    ap.add_argument("csv", nargs="+", help="gsym1.samples.csv file(s) from the watch")
     ap.add_argument("--out", default="out", help="output directory (default: out)")
     ap.add_argument("--hidden", type=int, default=8, help="hidden units (default: 8; model size grows ~150x this)")
     ap.add_argument("--epochs", type=int, default=150)

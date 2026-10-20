@@ -1,7 +1,7 @@
 {
-  "id": "gesture_symptoms",
-  "name": "Gesture Log",
-  "shortName": "Gesture Log",
+  "id": "gesture_symptoms_v1",
+  "name": "Gesture Log v1",
+  "shortName": "Twist Log",
   "version": "0.01",
   "description": "Log that something happened, with a severity 1-5, by twisting your wrist. Uses the onboard TensorFlow when a trained model is installed, a rule-based detector otherwise.",
   "icon": "app.png",
@@ -13,40 +13,40 @@
   "readme": "README.md",
   "storage": [
     {
-      "name": "gsym.app.js",
+      "name": "gsym1.app.js",
       "url": "app.js"
     },
     {
-      "name": "gsym.boot.js",
+      "name": "gsym1.boot.js",
       "url": "boot.js"
     },
     {
-      "name": "gsym.wid.js",
+      "name": "gsym1.wid.js",
       "url": "widget.js"
     },
     {
-      "name": "gsym.settings.js",
+      "name": "gsym1.settings.js",
       "url": "settings.js"
     },
     {
-      "name": "gsym.img",
+      "name": "gsym1.img",
       "url": "app-icon.js",
       "evaluate": true
     },
     {
-      "name": "gsym.counter.js",
+      "name": "gsym1.counter.js",
       "url": "../../lib/gesture-counter.js"
     }
   ],
   "data": [
     {
-      "name": "gsym.json"
+      "name": "gsym1.json"
     },
     {
-      "name": "gsym.log.json"
+      "name": "gsym1.log.json"
     },
     {
-      "name": "gsym.samples.csv",
+      "name": "gsym1.samples.csv",
       "storageFile": true
     }
   ],

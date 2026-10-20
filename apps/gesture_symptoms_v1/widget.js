@@ -2,7 +2,7 @@
 // severity for a minute after an event is logged, otherwise a dim ring.
 (function() {
   function draw() {
-    var GS = global.GSYM;
+    var GS = global.GSYM1;
     if (!GS || this.x === undefined) return;
     var cx = this.x + 12, cy = this.y + 12;
     g.reset().clearRect(this.x, this.y, this.x + 23, this.y + 23);
@@ -18,5 +18,5 @@
     }
   }
 
-  WIDGETS.gsym = { area: "tr", width: global.GSYM ? 24 : 0, draw: draw };
+  WIDGETS.gsym1 = { area: "tr", width: global.GSYM1 ? 24 : 0, draw: draw };
 })();

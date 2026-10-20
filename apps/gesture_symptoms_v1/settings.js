@@ -1,6 +1,6 @@
 (function(back) {
   var S = require("Storage");
-  var FILE = "gsym.json";
+  var FILE = "gsym1.json";
   var timeUtils = require("time_utils");
   var DETECTORS = ["auto", "rule"];
 
@@ -36,7 +36,7 @@
 
   function buildMenu() {
     var m = {
-      "": { title: /*LANG*/"Gesture Log" },
+      "": { title: /*LANG*/"Twist Log" },
       "< Back": back,
       /*LANG*/"Detection": {
         value: !!settings.enabled,

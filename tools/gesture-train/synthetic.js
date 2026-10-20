@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// Writes a synthetic gsym.samples.csv so the training pipeline can be tried
+// Writes a synthetic gsym1.samples.csv so the training pipeline can be tried
 // before recording real gestures. Real recordings will differ; don't install
 // a model trained only on this.
 //
 // Usage: node tools/gesture-train/synthetic.js > synthetic.csv
 
-const S = require("../../apps/gesture_symptoms/tests/synth.js");
+const S = require("../../apps/gesture_symptoms_v1/tests/synth.js");
 
 const rand = S.rng(42);
 const r01 = () => (rand() + 1) / 2;

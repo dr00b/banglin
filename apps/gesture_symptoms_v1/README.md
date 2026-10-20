@@ -1,4 +1,4 @@
-# Gesture Log
+# Gesture Log v1 (Twist)
 
 Log that something happened, and how bad it was, with a wrist gesture. You
 don't need to look at the watch or press anything.
@@ -58,8 +58,8 @@ recorded from stillness usually makes it unnecessary.
 
 ## Data
 
-- `gsym.log.json` — `[{t: unix seconds, s: severity, src: "tf"|"rule"}]`,
+- `gsym1.log.json` — `[{t: unix seconds, s: severity, src: "tf"|"rule"}]`,
   last 500 events.
-- `gsym.samples.csv` — recorded training samples, one row per gesture:
+- `gsym1.samples.csv` — recorded training samples, one row per gesture:
   `label,n,x,y,z,…` (int8, 64 = 1g).
-- `gsym.json` — settings.
+- `gsym1.json` — settings.

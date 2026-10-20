@@ -1,4 +1,4 @@
-// Scenes rendered by scripts/screenshots.js into apps/gesture_symptoms/screenshot-*.png.
+// Scenes rendered by scripts/screenshots.js into apps/gesture_symptoms_v1/screenshot-*.png.
 const fs = require("node:fs");
 const path = require("node:path");
 const { storageWrite, storageWriteJSON, FAKE_CLOCK } = require("../../../tests/helpers/emulator-mocks");
@@ -18,10 +18,10 @@ const events = [
 
 // Install files and start the engine the way the watch does at boot.
 function seed(settings) {
-  return storageWrite("gsym.counter.js", read("../../../lib/gesture-counter.js")) +
-    storageWrite("gsym.settings.js", read("../settings.js")) +
-    storageWriteJSON("gsym.json", Object.assign({ pauseInSleep: false }, settings)) +
-    storageWriteJSON("gsym.log.json", events) +
+  return storageWrite("gsym1.counter.js", read("../../../lib/gesture-counter.js")) +
+    storageWrite("gsym1.settings.js", read("../settings.js")) +
+    storageWriteJSON("gsym1.json", Object.assign({ pauseInSleep: false }, settings)) +
+    storageWriteJSON("gsym1.log.json", events) +
     read("../boot.js") + "\n";
 }
 
@@ -47,7 +47,7 @@ module.exports = [
     name: "live",
     // Long count timeout so the capture lands mid-count.
     code: seed({ quietMs: 8000 }) + app + "__pick(\"Live test\");\n" +
-      gestureCode([1, 1]) + accelCode([-1, -1]) + "GSYM.onUpdate();\n",
+      gestureCode([1, 1]) + accelCode([-1, -1]) + "GSYM1.onUpdate();\n",
     wait: 600
   },
   {
@@ -66,8 +66,8 @@ module.exports = [
   {
     name: "widget",
     code: seed({}) + FAKE_CLOCK +
-      "GSYM.last={t:Date.now(),severity:3,dry:false};\n" +
+      "GSYM1.last={t:Date.now(),severity:3,dry:false};\n" +
       "global.WIDGETS={};\n" + read("../widget.js") + "\n" +
-      "WIDGETS.gsym.x=150;WIDGETS.gsym.y=0;WIDGETS.gsym.draw();\n"
+      "WIDGETS.gsym1.x=150;WIDGETS.gsym1.y=0;WIDGETS.gsym1.draw();\n"
   }
 ];

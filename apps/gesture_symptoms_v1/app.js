@@ -1,13 +1,13 @@
 (function() {
   var S = require("Storage");
-  var LOG_FILE = "gsym.log.json";
-  var SAMPLES = "gsym.samples.csv";
+  var LOG_FILE = "gsym1.log.json";
+  var SAMPLES = "gsym1.samples.csv";
   var LABELS = ["trigger", "noise"];
-  var GS = global.GSYM; // engine from gsym.boot.js; undefined when detection is off
+  var GS = global.GSYM1; // engine from gsym1.boot.js; undefined when detection is off
 
   var C = (function() {
     var module, exports; // jshint ignore:line
-    eval(S.read("gsym.counter.js"));
+    eval(S.read("gsym1.counter.js"));
     return global.gsymCounter;
   })();
 
@@ -195,14 +195,14 @@
 
   function showMain() {
     leave();
-    var menu = { "": { title: /*LANG*/"Gesture Log" }, "< Back": function() { load(); } };
+    var menu = { "": { title: /*LANG*/"Twist Log" }, "< Back": function() { load(); } };
     menu[/*LANG*/"Live test"] = showLive;
     menu[/*LANG*/"Record samples"] = showRecordMenu;
     menu[/*LANG*/"Events (" + loadLog().length + ")"] = showLog;
     menu[/*LANG*/"Detector"] = { value: !GS ? /*LANG*/"off" : GS.hasModel ? "TF" : /*LANG*/"rule" };
     // Settings are read by the boot code, so reload the app to apply them.
     menu[/*LANG*/"Settings"] = function() {
-      eval(S.read("gsym.settings.js"))(function() { load("gsym.app.js"); });
+      eval(S.read("gsym1.settings.js"))(function() { load("gsym1.app.js"); });
     };
     E.showMenu(menu);
   }
