@@ -7,14 +7,6 @@ Personal smart watch apps for [Bangle.js](https://banglejs.com/).
 - **[stormy](apps/stormy/README.md)** — informational alerts for weather shifts
   (pressure, temperature; optional humidity/precipitation via phone forecast)
   that may provoke arthritis flares.
-- **[gesture_symptoms_v1](apps/gesture_symptoms_v1/README.md)** (Twist Log) —
-  log that something happened, with a severity of 1–5, by twisting your wrist.
-  Uses the onboard TensorFlow when a trained model is installed
-  ([training tool](tools/gesture-train/README.md)).
-- **[gesture_symptoms_v2](apps/gesture_symptoms_v2/README.md)** (Tap Log) — the
-  same log, tapped instead of twisted: two quick taps and a spaced third arm
-  it, then one tap per severity point. Detection happens inside the
-  accelerometer's own tap engine, so it costs almost no battery.
 - **[mr-morse](apps/mr-morse/README.md)** — a fork of Tap Log with its own
   protocol library, log and settings, for growing a richer tap language.
 
