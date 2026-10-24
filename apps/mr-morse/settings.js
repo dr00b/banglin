@@ -11,11 +11,14 @@
     quietMs: 4000,
     waitMaxMs: 1500,
     stillMax: 0.1,
+    tapDir: "",
     muteMs: 300,
     pauseInSleep: false,
     sleepStart: timeUtils.encodeTime({h: 23, m: 0}),
     sleepEnd: timeUtils.encodeTime({h: 7, m: 0})
   }, S.readJSON(FILE, 1) || {});
+
+  var DIRS = ["", "front", "back", "left", "right", "top", "bottom"];
 
   function save() { S.writeJSON(FILE, settings); }
 
@@ -75,6 +78,15 @@
         value: settings.stillMax, min: 0, max: 0.3, step: 0.02,
         format: function(v) { return v ? "<" + v.toFixed(2) + "g" : /*LANG*/"off"; },
         onchange: function(v) { settings.stillMax = Math.round(v * 100) / 100; save(); }
+      },
+      // Only accept password taps the accelerometer reports from this
+      // direction. Strong against knocks from the side and jolts through a
+      // desk, but only turn it on once the Live test shows your own taps
+      // always report the same direction (see FIELD-TESTS.md).
+      /*LANG*/"Tap direction": {
+        value: Math.max(0, DIRS.indexOf(settings.tapDir)), min: 0, max: DIRS.length - 1,
+        format: function(v) { return DIRS[v] || /*LANG*/"any"; },
+        onchange: function(v) { settings.tapDir = DIRS[v]; save(); }
       },
       // How long the engine stays deaf after a buzz. Raise it if the
       // confirmation buzz ever counts itself as a tap.

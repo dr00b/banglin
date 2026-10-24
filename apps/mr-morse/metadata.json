@@ -2,7 +2,7 @@
   "id": "mr-morse",
   "name": "Mr Morse",
   "shortName": "Mr Morse",
-  "version": "0.02",
+  "version": "0.03",
   "description": "Log that something happened, with a severity 1-5, by tapping the watch. A double tap, a pause, then a single tap arms it; the taps after that are the severity. Rejects patting, knocks and a moving wrist. Uses the accelerometer's own tap detector, so it costs almost no power.",
   "icon": "app.png",
   "tags": "tool,health,widget",
@@ -29,6 +29,10 @@
       "url": "settings.js"
     },
     {
+      "name": "morse.rec.js",
+      "url": "recorder.js"
+    },
+    {
       "name": "morse.img",
       "url": "app-icon.js",
       "evaluate": true
@@ -44,6 +48,13 @@
     },
     {
       "name": "morse.log.json"
+    },
+    {
+      "name": "morse.rec.json"
+    },
+    {
+      "wildcard": "morse.r*.csv",
+      "storageFile": true
     }
   ],
   "screenshots": [

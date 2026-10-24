@@ -10,7 +10,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { chromium } = require("@playwright/test");
-const { startEmulator, sendCode, canvasPng } = require("../tests/helpers/emulator");
+const { startEmulator, sendCode, canvasPng, captureSerial } = require("../tests/helpers/emulator");
 const { prelude } = require("../tests/helpers/emulator-mocks");
 
 const ROOT = path.resolve(__dirname, "..");
@@ -20,17 +20,6 @@ function appsToRender(filter) {
   return fs.readdirSync(path.join(ROOT, "apps"))
     .filter((id) => !filter.length || filter.includes(id))
     .filter((id) => fs.existsSync(path.join(ROOT, "apps", id, "tests", "screenshots.js")));
-}
-
-// The emulator echoes serial output one character at a time as console
-// messages; reassemble it so firmware errors can be reported.
-function captureSerial(page) {
-  let out = "";
-  page.on("console", (msg) => {
-    const m = msg.text().match(/"data": "((?:[^"\\]|\\.)*)"/);
-    if (m) out += JSON.parse("\"" + m[1] + "\"");
-  });
-  return () => out;
 }
 
 async function renderScene(browser, appId, scene) {

@@ -3,90 +3,22 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const path = require("node:path");
-const fs = require("node:fs");
 
-const mock = require(path.resolve(__dirname, "../../../tests/helpers/bangle-mock.js"));
-const tapLib = fs.readFileSync(path.resolve(__dirname, "../../../lib/morse-protocol.js"), "utf8");
-const bootSrc = fs.readFileSync(path.resolve(__dirname, "../boot.js"), "utf8");
+const harness = require(path.resolve(__dirname, "harness.js"));
 
 // Boot the engine with a controllable clock and a timer queue we can drain.
 function boot(t, opts) {
-  opts = opts || {};
-  const files = Object.assign({ "morse.tapseq.js": tapLib }, opts.files || {});
-  if (opts.settings) files["morse.json"] = JSON.stringify(opts.settings);
-  const buzzes = [], writes = [], locks = [], power = [];
-  let locked = opts.locked === undefined ? true : opts.locked;
-  const h = mock.install({
-    files: files,
-    Bangle: {
-      buzz: function(ms) { buzzes.push(ms); return Promise.resolve(); },
-      isLocked: function() { return locked; },
-      setLocked: function(v) { locked = v; locks.push(v); },
-      accelRd: function() { return 0x80; },
-      accelWr: function(reg, data) { writes.push([reg, data]); },
-      setPollInterval: function(ms) { power.push(["poll", ms]); },
-      setOptions: function(o) { power.push(["options", o]); }
-    }
-  });
-
-  const clock = { now: 1700000000000 };
-  const realNow = Date.now;
-  Date.now = function() { return clock.now; };
-  const timers = [];
-  const add = (cb, ms, interval) => timers.push({ due: clock.now + ms, ms: ms, cb: cb, interval: interval, live: true });
-  const fakeSetTimeout = function(cb, ms) {
-    const args = Array.prototype.slice.call(arguments, 2);
-    return add(function() { cb.apply(null, args); }, ms || 0, false);
+  const b = harness.boot(opts);
+  t.after(b.restore);
+  // The password at the user's own rhythm, then the silence after it and
+  // the echo. Leaves the clock just past the mute, ready to count.
+  b.password = function(fused) {
+    if (fused) { b.tap(true); } else { b.tap(false); b.advance(230); b.tap(false); }
+    b.advance(700);
+    b.tap(false);
+    b.advance(1800); // silence, echo plays, counting starts, mute expires
   };
-  const fakeSetInterval = function(cb, ms) { return add(cb, ms, true); };
-  const fakeClear = function(id) { if (timers[id - 1]) timers[id - 1].live = false; };
-
-  t.after(function() {
-    Date.now = realNow;
-    h.restore();
-    delete global.MORSE;
-    delete global.morseTap;
-  });
-
-  (0, eval)("(function(require, Bangle, setInterval, clearInterval, setTimeout) { " + bootSrc + " })")(
-    global.require, global.Bangle, fakeSetInterval, fakeClear, fakeSetTimeout);
-
-  // Run every timer due up to now+ms, in order, moving the clock as we go.
-  function advance(ms) {
-    const target = clock.now + ms;
-    for (;;) {
-      let next = null;
-      for (const x of timers) if (x.live && x.due <= target && (!next || x.due < next.due)) next = x;
-      if (!next) break;
-      clock.now = next.due;
-      if (next.interval) next.due += next.ms; else next.live = false;
-      next.cb();
-    }
-    clock.now = target;
-  }
-
-  return {
-    h: h, clock: clock, buzzes: buzzes, writes: writes, locks: locks, timers: timers, power: power,
-    advance: advance,
-    setLocked: function(v) { locked = v; },
-    tap: function(double, dir) { h.Bangle.emit("tap", { dir: dir || "left", double: !!double }); },
-    touch: function() { h.Bangle.emit("touch", 1); },
-    // n accelerometer samples 80 ms apart, each changing by diff g.
-    accel: function(n, diff) {
-      for (let i = 0; i < n; i++) { h.Bangle.emit("accel", { diff: diff }); advance(80); }
-    },
-    accelListeners: function() { return (h.listeners.accel || []).length; },
-    state: function() { return global.MORSE.state; },
-    log: function() { return h.storage.readJSON("morse.log.json", 1) || []; },
-    // The password at the user's own rhythm, then the silence after it and
-    // the echo. Leaves the clock just past the mute, ready to count.
-    password: function(fused) {
-      if (fused) { this.tap(true); } else { this.tap(false); advance(230); this.tap(false); }
-      advance(700);
-      this.tap(false);
-      advance(1800); // silence, echo plays, counting starts, mute expires
-    }
-  };
+  return b;
 }
 
 test("does nothing when detection is disabled", function(t) {
@@ -201,40 +133,58 @@ test("burping: a minute of steady pats logs nothing", function(t) {
   assert.strictEqual(b.buzzes.length, 0, "not even an echo");
 });
 
-test("a moving wrist is not tapping: the password is dropped", function(t) {
+test("a lone tap doesn't wake the accelerometer stream", function(t) {
   const b = boot(t, {});
   b.tap(false);
-  assert.deepStrictEqual(b.power[0], ["poll", 80], "full-rate accel while deciding");
-  assert.strictEqual(b.accelListeners(), 1);
-  b.accel(3, 0.3);
-  b.tap(false);
-  b.accel(9, 0.3);
-  b.tap(false);
-  b.accel(8, 0.3);
   b.advance(1000);
-  assert.strictEqual(b.state(), "idle");
-  assert.strictEqual(b.buzzes.length, 0);
+  assert.deepStrictEqual(b.power, []);
+  assert.strictEqual(b.accelListeners(), 0);
+});
+
+test("a moving wrist is not tapping: dropped as soon as it's plain", function(t) {
+  const b = boot(t, {});
+  b.tap(false);
+  b.advance(230);
+  b.tap(false);
+  assert.deepStrictEqual(b.power[0], ["poll", 80], "full-rate accel once a pair is in");
+  assert.strictEqual(b.accelListeners(), 1);
+  b.accel(6, 0.3);           // half a second of a swinging arm
+  assert.strictEqual(b.state(), "idle", "gives up without waiting for a third tap");
   assert.strictEqual(global.MORSE.rejected.reason, "moving");
   assert.ok(global.MORSE.motion > 0.2);
   assert.strictEqual(b.accelListeners(), 0, "stopped listening");
   assert.deepStrictEqual(b.power[b.power.length - 1], ["options", { powerSave: true }]);
+  b.advance(2000);
+  assert.strictEqual(b.buzzes.length, 0);
 });
 
 test("a still wrist with a few tap spikes arms", function(t) {
   const b = boot(t, {});
   b.tap(false);
+  b.advance(230);
+  b.tap(false);
   b.accel(1, 0.4);           // the tap itself
-  b.accel(2, 0.01);
-  b.tap(false);
-  b.accel(1, 0.4);
-  b.accel(8, 0.01);
-  b.tap(false);
-  b.accel(1, 0.4);
   b.accel(7, 0.01);
+  b.tap(false);
+  b.accel(1, 0.4);
+  b.accel(9, 0.01);
   b.advance(1000);
   assert.strictEqual(b.state(), "counting");
   assert.ok(global.MORSE.motion < 0.05);
   assert.strictEqual(b.accelListeners(), 0, "not listening while counting");
+});
+
+test("patting that stops: moving while the taps go in, still after, is dropped", function(t) {
+  const b = boot(t, {});
+  b.tap(true);               // the last pats, fused by the chip
+  b.accel(5, 0.3);           // the arm still stroking
+  b.advance(60);
+  b.tap(false);
+  b.accel(10, 0.01);         // ...then it stops, and stays still
+  b.advance(1000);
+  assert.strictEqual(b.state(), "idle");
+  assert.strictEqual(global.MORSE.rejected.reason, "moving", "the still part doesn't outvote the moving part");
+  assert.strictEqual(b.buzzes.length, 0);
 });
 
 test("the stillness check can be switched off", function(t) {
@@ -327,4 +277,30 @@ test("the Live test works on an unlocked screen, but still ignores glass pokes",
   b.touch();
   b.tap(false);
   assert.strictEqual(global.MORSE.lastTap.skipped, true, "a poke at the glass is still not a tap");
+});
+
+test("protocol constants can be tuned from morse.json", function(t) {
+  const b = boot(t, { settings: { pairMaxMs: 200 } });
+  b.tap(false);
+  b.advance(230);
+  b.tap(false);              // fine by default, too slow for this user's own tuning
+  assert.strictEqual(b.state(), "idle");
+  assert.strictEqual(global.MORSE.rejected.reason, "rhythm");
+});
+
+test("the widget is only redrawn when what it shows changes", function(t) {
+  const b = boot(t, {});
+  for (let i = 0; i < 60; i++) { b.tap(false); b.advance(400); }   // half a minute of patting
+  b.advance(5000);
+  assert.ok(b.m.draws <= 4, b.m.draws + " redraws for 60 pats");
+});
+
+test("a field-test recording in progress keeps counts out of the event log", function(t) {
+  const b = boot(t, {});
+  global.MORSE.recording = true;
+  b.password(true);
+  b.tap(false);
+  b.advance(4400);
+  assert.deepStrictEqual(b.metrics().done, [1], "counted");
+  assert.strictEqual(b.log().length, 0, "not logged");
 });

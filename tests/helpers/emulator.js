@@ -50,4 +50,16 @@ async function canvasPng(canvas) {
   return Buffer.from(dataUrl.split(",")[1], "base64");
 }
 
-module.exports = { EMULATOR_URL, startEmulator, sendCode, canvasPng };
+// The emulator echoes serial output one character at a time as console
+// messages; reassemble it so firmware output and errors can be read. Call
+// before startEmulator; returns a function giving everything so far.
+function captureSerial(page) {
+  let out = "";
+  page.on("console", (msg) => {
+    const m = msg.text().match(/"data": "((?:[^"\\]|\\.)*)"/);
+    if (m) out += JSON.parse("\"" + m[1] + "\"");
+  });
+  return () => out;
+}
+
+module.exports = { EMULATOR_URL, startEmulator, sendCode, canvasPng, captureSerial };

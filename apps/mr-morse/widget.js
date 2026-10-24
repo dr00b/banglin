@@ -9,7 +9,7 @@
     g.reset().clearRect(this.x, this.y, this.x + 23, this.y + 23);
     var recent = GS.last && !GS.last.dry && GS.last.severity > 0 && Date.now() - GS.last.t < 60000;
     var counting = GS.state === "counting";
-    var arming = GS.state === "waiting" || GS.state === "echo";
+    var arming = GS.state === "waiting" || GS.state === "confirm" || GS.state === "echo";
     if (counting || recent) {
       // Pure palette colours: Bangle.js 2 has a 3-bit display and dithers others.
       g.setColor(counting ? "#00f" : "#0f0").fillCircle(cx, cy, 10);

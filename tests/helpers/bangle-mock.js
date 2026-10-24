@@ -77,7 +77,8 @@ function install(overrides) {
     showMessage: function() {},
     showAlert: function() { return Promise.resolve(); },
     showPrompt: function() { return Promise.resolve(true); },
-    clip: function(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+    clip: function(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); },
+    on: function() {}
   }, overrides.E || {});
 
   global.Bangle = Bangle;

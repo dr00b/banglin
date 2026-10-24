@@ -68,13 +68,33 @@ test("the pause has to be clearly longer than the pair", function() {
   const s = createSequencer();
   s.tap(false, 0);
   s.tap(false, 300);
-  s.tap(false, 800);          // 500 ms pause, but under 2 x 300
+  s.tap(false, 900);          // 600 ms pause: exactly 2 x, a steady pat with a beat missing
   assert.strictEqual(s.state(), "idle");
   const ok = createSequencer();
   ok.tap(false, 0);
   ok.tap(false, 300);
-  ok.tap(false, 900);         // 600 ms: twice the pair
+  ok.tap(false, 1000);        // 700 ms: 2.3 x the pair
   assert.strictEqual(ok.state(), "confirm");
+});
+
+test("...but not hugely longer: the rhythm has a shape both ways", function() {
+  const s = createSequencer();
+  s.tap(false, 0);
+  s.tap(false, 160);
+  s.tap(false, 160 + 900);    // 5.6 x a quick pair
+  assert.strictEqual(s.state(), "idle");
+  assert.strictEqual(s.rejected().reason, "rhythm");
+});
+
+test("a steady pat with a beat missing never arms", function() {
+  [300, 350, 400].forEach(function(every) {
+    const s = createSequencer();
+    const beats = [];
+    for (let i = 0; i < 60; i++) if (i % 3 !== 2) beats.push(i * every);   // every third pat too soft
+    const out = [];
+    beats.forEach(function(t) { out.push(s.tap(false, t)); out.push(s.tick(t + 100)); });
+    assert.deepStrictEqual(out.filter(Boolean), [], "every " + every + " ms");
+  });
 });
 
 test("a password has to start out of silence", function() {
@@ -88,6 +108,19 @@ test("a password has to start out of silence", function() {
   assert.strictEqual(s.tick(900 + CONFIRM_MS + 600), null);
   assert.strictEqual(s.state(), "idle");
   assert.strictEqual(s.rejected().reason, "busy");
+});
+
+test("a run of taps with gaps in it is still a run", function() {
+  const s = createSequencer();
+  s.tap(false, 0);
+  s.tap(false, 1100);
+  s.tap(false, 2200);         // each a second apart, but three in four seconds
+  s.tick(2700);
+  s.tap(false, 3300);
+  s.tap(false, 3300 + PAIR_MS);
+  assert.strictEqual(s.state(), "idle", "no password out of the middle of it");
+  assert.strictEqual(s.rejected().reason, "busy");
+  assert.deepStrictEqual(password(s, 9000, false), { type: "echo" }, "fine once it has died down");
 });
 
 test("taps the caller sat out still count as noise", function() {
@@ -107,6 +140,26 @@ test("a tap straight after the password cancels it", function() {
   assert.strictEqual(s.state(), "idle");
   assert.strictEqual(s.rejected().reason, "after");
   assert.strictEqual(s.tick(CONFIRM_MS + 1000), null, "and no echo later");
+});
+
+test("a drum roll is too quick to be the pair", function() {
+  const s = createSequencer();
+  s.tap(false, 0);
+  s.tap(false, 110);          // fingers rolling: quicker than any pair, slower than a bounce
+  assert.strictEqual(s.state(), "idle");
+  assert.strictEqual(s.rejected().reason, "rhythm");
+});
+
+test("with a tap direction set, only taps from there count", function() {
+  const s = createSequencer({ tapDir: "back" });
+  s.tap(false, 0, "back");
+  s.tap(false, PAIR_MS, "back");
+  assert.strictEqual(s.tap(false, CONFIRM_MS, "front"), null, "a jolt from underneath");
+  assert.strictEqual(s.state(), "idle");
+  assert.strictEqual(s.rejected().reason, "direction");
+  const ok = createSequencer({ tapDir: "back" });
+  [0, PAIR_MS, CONFIRM_MS].forEach(function(t) { ok.tap(false, t, "back"); });
+  assert.deepStrictEqual(ok.tick(CONFIRM_MS + 600), { type: "echo" });
 });
 
 test("a fused double in the middle of a sequence is noise", function() {
@@ -138,7 +191,7 @@ test("the caller can veto an attempt", function() {
 test("a bounce off the first tap is ignored, the real pair still lands", function() {
   const s = createSequencer();
   s.tap(false, 0);
-  s.tap(false, 40);           // within pairMinMs: one knock ringing twice
+  s.tap(false, 40);           // within bounceMs: one knock ringing twice
   assert.strictEqual(s.state(), "half");
   s.tap(false, 230);
   assert.strictEqual(s.state(), "waiting");
@@ -148,9 +201,9 @@ test("the wait expires silently", function() {
   const s = createSequencer();
   s.tap(false, 0);
   s.tap(false, 230);
-  assert.strictEqual(s.tick(1500), null);
+  assert.strictEqual(s.tick(1300), null);
   assert.strictEqual(s.state(), "waiting", "still inside the window");
-  assert.strictEqual(s.tick(1800), null, "no buzz when it gives up");
+  assert.strictEqual(s.tick(1400), null, "no buzz when it gives up: past 5 x the pair");
   assert.strictEqual(s.state(), "idle");
 });
 

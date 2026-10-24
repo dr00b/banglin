@@ -84,6 +84,84 @@ test("live test draws every protocol state without blowing up", function(t) {
   assert.ok(strings.includes("left single move 0.25"), strings.join("|"));
 });
 
+test("live test says why a tap was ignored", function(t) {
+  const strings = [];
+  const a = setup(t, {}, {});
+  global.g.drawString = function(s) { strings.push(s); return this; };
+  a.last()["Live test"]();
+  global.MORSE.lastTap = { t: Date.now(), dir: "front", double: false, skipped: true, why: "cooldown" };
+  global.MORSE.rejected = { reason: "direction", t: Date.now() };
+  global.MORSE.onUpdate();
+  assert.ok(strings.includes("front single - cooldown"), strings.join("|"));
+  assert.ok(strings.includes("Wrong direction"));
+});
+
+// --- Field test ---------------------------------------------------------
+
+function fieldSetup(t, files) {
+  return setup(t, Object.assign({ "morse.rec.js": src("../recorder.js") }, files || {}), {});
+}
+
+test("field test: starting a session writes its header and marker and starts recording", async function(t) {
+  const a = fieldSetup(t);
+  a.last()["Field test"]();
+  const m = a.last();
+  m["Session"].onchange(m["Session"].max - 5);           // password-seated
+  m["Severity"].onchange(2);
+  m["Attempts"].onchange(4);
+  m["Start"]();
+  await new Promise(setImmediate);
+  const marker = JSON.parse(a.h.storage.files["morse.rec.json"]);
+  assert.strictEqual(marker.label, "password-seated");
+  const header = JSON.parse(a.h.storage.files[marker.file].split("\n")[0].slice(1));
+  assert.deepStrictEqual([header.label, header.expect, header.severity, header.attempts, header.minutes],
+    ["password-seated", "logs", 2, 4, 10]);
+  assert.strictEqual(global.MORSE.recording, true);
+  assert.strictEqual(typeof global.MORSE.trace, "function");
+  assert.ok(a.last()["Field test"], "back at the main menu");
+});
+
+test("field test: an everyday session expects silence; stop ends it", async function(t) {
+  const a = fieldSetup(t);
+  a.last()["Field test"]();
+  a.last()["Start"]();                                     // the first session: burp-pat
+  await new Promise(setImmediate);
+  const marker = JSON.parse(a.h.storage.files["morse.rec.json"]);
+  const header = JSON.parse(a.h.storage.files[marker.file].split("\n")[0].slice(1));
+  assert.deepStrictEqual([header.label, header.expect, header.severity], ["burp-pat", "silent", undefined]);
+  a.last()["Field test"]();
+  const m = a.last();
+  assert.strictEqual(m["burp-pat"].value, "10 min left");
+  m["Stop now"]();
+  assert.strictEqual(a.h.storage.files["morse.rec.json"], undefined, "marker removed");
+  assert.strictEqual(global.MORSE.recording, false);
+  assert.ok(/^s,\d+$/m.test(a.h.storage.files[marker.file]), "stop line written");
+});
+
+test("field test: the Live test is refused while recording", async function(t) {
+  const alerts = [];
+  const a = fieldSetup(t);
+  global.E.showAlert = function(msg) { alerts.push(msg); return Promise.resolve(); };
+  a.last()["Field test"]();
+  a.last()["Start"]();
+  await new Promise(setImmediate);
+  a.last()["Live test"]();
+  assert.ok(alerts.some(function(x) { return /Stop the field test/.test(x); }), alerts.join("|"));
+  assert.strictEqual(global.MORSE.dryRun, false);
+});
+
+test("field test: recordings are listed by session and can be deleted", async function(t) {
+  const files = { "morse.rabc.csv": "#" + JSON.stringify({ label: "typing", minutes: 5 }) + "\na,1,0,0,-1000,2\n" };
+  const a = fieldSetup(t, files);
+  a.last()["Field test"]();
+  a.last()["Recordings (1)"]();
+  const m = a.last();
+  assert.ok(m["typing 5m"], Object.keys(m).join("|"));
+  m["typing 5m"]();
+  await new Promise(setImmediate);
+  assert.strictEqual(a.h.storage.files["morse.rabc.csv"], undefined);
+});
+
 test("event log lists newest first and deletes on confirm", async function(t) {
   const log = [{ t: 1700000000, s: 2 }, { t: 1700000600, s: 5 }];
   const a = setup(t, { "morse.log.json": JSON.stringify(log) }, {});
@@ -104,6 +182,15 @@ test("settings defaults: locked-only on, sleep pause off, 4s count timeout", fun
   assert.strictEqual(m["Pause in sleep"].value, false, "3am logging works out of the box");
   assert.strictEqual(m["Count timeout"].format(m["Count timeout"].value), "4.0s");
   assert.strictEqual(m["Tap sens."].format(0), "default");
+});
+
+test("tap direction defaults to any and saves the one chosen", function(t) {
+  const s = settingsMenu(t, {});
+  const m = s.menus[0];
+  assert.strictEqual(m["Tap direction"].format(m["Tap direction"].value), "any");
+  assert.strictEqual(m["Still wrist"].format(m["Still wrist"].value), "<0.10g");
+  m["Tap direction"].onchange(2);
+  assert.strictEqual(JSON.parse(s.h.storage.files["morse.json"]).tapDir, "back");
 });
 
 test("settings persist changes", function(t) {

@@ -36,12 +36,18 @@
       E.showAlert(/*LANG*/"Detection is off. Turn it on in Settings.").then(showMain);
       return;
     }
+    if (GS.recording) {
+      // The Live test changes how the engine behaves; it would spoil the recording.
+      E.showAlert(/*LANG*/"Stop the field test first.").then(showMain);
+      return;
+    }
     var WINDOW = 8000;      // ms of tap history drawn
     var WHY = {
       busy: /*LANG*/"Not from quiet",
       rhythm: /*LANG*/"Wrong rhythm",
       after: /*LANG*/"Tap after end",
-      moving: /*LANG*/"Wrist moving"
+      moving: /*LANG*/"Wrist moving",
+      direction: /*LANG*/"Wrong direction"
     };
 
     function status() {
@@ -62,7 +68,7 @@
       var lt = GS.lastTap;
       if (!lt) return /*LANG*/"No taps yet";
       return (lt.dir || "?") + " " + (lt.double ? /*LANG*/"double" : /*LANG*/"single") +
-        (lt.skipped ? /*LANG*/" - ignored" : "") +
+        (lt.skipped ? " - " + (lt.why || /*LANG*/"ignored") : "") +
         (typeof GS.motion === "number" ? " " + /*LANG*/"move " + GS.motion.toFixed(2) : "");
     }
 
@@ -102,6 +108,109 @@
     draw();
   }
 
+  // --- Field test -------------------------------------------------------
+  // Records a real session so it can be replayed through the same engine in
+  // node and compared (FIELD-TESTS.md). The session names match the
+  // simulated scenarios in tests/scenarios.js.
+
+  var SESSIONS = [
+    "burp-pat", "burp-hold", "bouncing", "swing-knock", "door-knock", "clapping",
+    "typing", "drumming", "driving", "walking", "running", "chores", "sleep", "day-mix",
+    "password-seated", "password-held", "password-in-bed", "password-after-typing",
+    "password-after-rest", "password-walking"
+  ];
+  var field = { session: 0, minutes: 10, severity: 3, attempts: 5 };
+
+  function recordings() {
+    return S.list(/^morse\.r.*\.csv$/, { sf: true });
+  }
+
+  function recordingLabel(name) {
+    try {
+      var h = JSON.parse(S.open(name, "r").readLine().substr(1));
+      return h.label + " " + h.minutes + "m";
+    } catch (e) {
+      return name;
+    }
+  }
+
+  function startRecording() {
+    var label = SESSIONS[field.session], intent = label.indexOf("password") === 0;
+    // ~25 bytes a line at 12.5 lines a second, with room to spare.
+    if (S.getFree && S.getFree() < field.minutes * 60 * 400 * 2) {
+      E.showAlert(/*LANG*/"Not enough storage").then(showField);
+      return;
+    }
+    var start = Date.now();
+    var rec = {
+      file: "morse.r" + Math.floor(start / 1000).toString(36) + ".csv",
+      start: start, until: start + field.minutes * 60000, label: label
+    };
+    var header = {
+      v: 1, label: label, expect: intent ? "logs" : "silent",
+      severity: intent ? field.severity : undefined, attempts: intent ? field.attempts : undefined,
+      start: start, minutes: field.minutes, settings: GS.settings,
+      fw: process.env.VERSION
+    };
+    S.open(rec.file, "w").write("#" + JSON.stringify(header) + "\n");
+    S.writeJSON("morse.rec.json", rec);
+    eval(S.read("morse.rec.js"))(GS, rec, true);
+    E.showAlert(intent
+      ? /*LANG*/"Recording. Lock the watch, then tap the password and " + field.severity + " x" + field.attempts
+      : /*LANG*/"Recording. Lock the watch and go.").then(showMain);
+  }
+
+  function showRecordings() {
+    leave();
+    var menu = { "": { title: /*LANG*/"Recordings" }, "< Back": showField };
+    var list = recordings();
+    if (!list.length) menu[/*LANG*/"None yet"] = function() {};
+    list.forEach(function(name) {
+      menu[recordingLabel(name)] = function() {
+        E.showPrompt(/*LANG*/"Delete " + name + "?").then(function(ok) {
+          if (ok) S.open(name, "r").erase();
+          showRecordings();
+        });
+      };
+    });
+    E.showMenu(menu);
+  }
+
+  function showField() {
+    leave();
+    if (!GS) {
+      E.showAlert(/*LANG*/"Detection is off. Turn it on in Settings.").then(showMain);
+      return;
+    }
+    var menu = { "": { title: /*LANG*/"Field test" }, "< Back": showMain };
+    if (GS.rec) {
+      var left = Math.max(0, Math.round((GS.rec.until - Date.now()) / 60000));
+      menu[GS.rec.label] = { value: left + /*LANG*/" min left" };
+      menu[/*LANG*/"Stop now"] = function() { GS.rec.stop(); showField(); };
+    } else {
+      menu[/*LANG*/"Session"] = {
+        value: field.session, min: 0, max: SESSIONS.length - 1,
+        format: function(v) { return SESSIONS[v]; },
+        onchange: function(v) { field.session = v; }
+      };
+      menu[/*LANG*/"Minutes"] = {
+        value: field.minutes, min: 5, max: 30, step: 5,
+        onchange: function(v) { field.minutes = v; }
+      };
+      menu[/*LANG*/"Severity"] = {
+        value: field.severity, min: 1, max: 5,
+        onchange: function(v) { field.severity = v; }
+      };
+      menu[/*LANG*/"Attempts"] = {
+        value: field.attempts, min: 1, max: 10,
+        onchange: function(v) { field.attempts = v; }
+      };
+      menu[/*LANG*/"Start"] = startRecording;
+    }
+    menu[/*LANG*/"Recordings (" + recordings().length + ")"] = showRecordings;
+    E.showMenu(menu);
+  }
+
   // --- Event log --------------------------------------------------------
 
   function showLog() {
@@ -137,7 +246,8 @@
     var menu = { "": { title: /*LANG*/"Mr Morse" }, "< Back": function() { load(); } };
     menu[/*LANG*/"Live test"] = showLive;
     menu[/*LANG*/"Events (" + loadLog().length + ")"] = showLog;
-    menu[/*LANG*/"Detection"] = { value: GS ? /*LANG*/"on" : /*LANG*/"off" };
+    menu[/*LANG*/"Field test"] = showField;
+    menu[/*LANG*/"Detection"] = { value: GS ? (GS.rec ? /*LANG*/"recording" : /*LANG*/"on") : /*LANG*/"off" };
     // Settings are read by the boot code, so reload the app to apply them.
     menu[/*LANG*/"Settings"] = function() {
       eval(S.read("morse.settings.js"))(function() { load("morse.app.js"); });

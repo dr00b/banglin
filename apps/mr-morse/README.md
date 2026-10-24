@@ -13,7 +13,8 @@ you want to compare.
 
 1. **Password:** with the watch arm still and no tapping for a second
    beforehand, tap twice quickly, pause about three quarters of a second, then
-   tap once more — dot-dot … dot — and **stop**.
+   tap once more — dot-dot … dot — and **stop**. Right after a burst of
+   knocks (three or more in four seconds), wait a few seconds first.
 2. About half a second later the watch **buzzes the pattern back** —
    buzz-buzz, pause, buzz. That's your go-ahead.
 3. **Severity:** tap 1–5 times.
@@ -34,11 +35,12 @@ hold:
 
 | Check | Default | Rejects |
 |-------|---------|---------|
-| Silence before the first tap | 1 s | joining a train part-way |
-| Pair gap | 100–350 ms | slow or bouncing taps |
-| Pause before the last tap | ≥ 2× the pair gap, 450–1500 ms | three even taps |
+| Silence before the first tap | 1 s, and < 3 taps in the last 4 s | joining a train part-way, or in a gap |
+| Pair gap | 150–350 ms | finger rolls and rebounds (quicker), slow taps |
+| Pause before the last tap | 2.3–5× the pair gap, 450–1500 ms | three even taps, a steady pat with a beat missing |
 | Silence after the last tap | 0.6 s | a train that carries on |
-| Wrist still (`Still wrist`) | median < 0.1 g | patting with the watch hand, knocks mid-swing |
+| Wrist still (`Still wrist`) | median < 0.1 g, during *and* after | patting with the watch hand, knocks mid-swing, the last pats before you stop |
+| Tap direction (`Tap direction`) | any (off) | knocks from the side, jolts through a desk |
 | Counting taps | ≤ 5 | patting that continues after a false arm |
 
 A tap that breaks the rhythm doesn't just fail — it counts as noise, so a
@@ -48,6 +50,35 @@ ignores for other reasons (cooldown, screen in use) count as noise too.
 A real "hold" (dot-dot-dash) isn't possible: the accelerometer's tap detector
 only reports impacts, not pressure. The long pause plus the silence after it
 plays the same role.
+
+Every constant here can be overridden in `morse.json` (e.g. `"rhythmRatio": 2.1`)
+to fit your own rhythm. See [tests/FIELD-TESTS.md](tests/FIELD-TESTS.md) for how to
+measure it.
+
+### How well it works
+
+`tests/simulation.test.js` runs the real engine against simulated everyday life
+(burping, bouncing, knocks while walking, door knocks, clapping, walking,
+running, sleep, typing, drumming, driving, chores), under three models of the
+chip's tap reporting including a worst case where every knock registers.
+
+- **Rhythmic or moving activities** (burping by patting with the watch
+  hand, bouncing, knocks while swinging, door knocks, clapping, walking,
+  running, sleep): never armed.
+- **Knocks scattered at random onto a still wrist** (typing hard, drumming,
+  potholes, clinks while washing up, and pats reaching the arm that holds
+  the baby while the other hand burps him): no rhythm and no movement give
+  these away, so now and then three line up like the password. That's under 0.6
+  false logs per hour of the activity in the realistic models, and up to ~4
+  in the worst case. Setting **Tap direction** removes almost all of them,
+  but only do it once you've checked your own taps always report the same
+  direction (FIELD-TESTS.md).
+- **Real passwords:** 98–100% logged (90%+ with soft taps on a pillow). A miss
+  is a refusal, and a count is never more than you tapped. It can be one short
+  if a tap was too soft for the accelerometer to notice at all (0.25% of soft
+  attempts in bed); the buzz-back tells you, and Events lets you delete it.
+
+These come from a model; the field tests check them against your watch.
 
 ## How it works
 
@@ -67,24 +98,31 @@ Three things the app has to get right:
   shakes the watch. Taps are ignored while the screen is unlocked (Only if
   locked) and for 250 ms after any touch. While counting, the screen is locked
   so your taps can't press anything.
-- **The chip's idea of a "double".** Two taps ~0.2 s apart may arrive as one
-  `double` event or as two singles, depending on the accelerometer's timing
-  registers. Both are accepted, so the gesture works either way — and during
-  counting a fused pair counts as two.
+- **The chip's idea of a "double".** A pair may arrive as one `double` event
+  or as two singles, depending on the accelerometer's timing registers (by the
+  datasheet's defaults, only taps 0.3–0.4 s apart fuse). Both are accepted, so
+  the gesture works either way — and during counting a fused pair counts as
+  two.
 
 ## App
 
 - **Live test** — try the gesture without logging it. Shows the protocol state,
   why the last attempt was thrown away (*Not from quiet*, *Wrong rhythm*, *Tap
-  after end*, *Wrist moving*), the last tap (direction, single/double, whether
-  it was ignored, and how much the wrist moved) and a timeline of the last 8
-  seconds of taps. Doubles are drawn tall, ignored taps dotted. Use the `move`
+  after end*, *Wrist moving*, *Wrong direction*), the last tap (direction,
+  single/double, why it was ignored if it was, and how much the wrist moved)
+  and a timeline of the last 8 seconds of taps. Doubles are drawn tall, ignored taps dotted. Use the `move`
   number to tune `Still wrist`: tap normally and note it, then pat something
   with the watch hand and note that; set the threshold between the two.
+- **Field test** — record a real session (burping, typing, a few passwords…)
+  so it can be replayed through the same engine on a computer and kept as a
+  test. Pick the session, its length and, for password sessions, the severity
+  and number of attempts, then Start and lock the watch. It stops by itself
+  (two long buzzes). Counts aren't logged while recording. See
+  [tests/FIELD-TESTS.md](tests/FIELD-TESTS.md).
 - **Events** — newest first. Tap an event to delete a false positive.
 - **Settings** — detection on/off, only-when-locked, lock-while-counting, tap
-  sensitivity, count timeout, confirm window, still wrist, and an optional
-  sleep pause. `preQuietMs` / `postQuietMs` can be set in `morse.json`.
+  sensitivity, count timeout, confirm window, still wrist, tap direction, and
+  an optional sleep pause. Any protocol constant can be set in `morse.json`.
   Changes apply when the app reloads.
 
 The widget (top right) shows a ring when idle, a blue dot while the password is
@@ -106,13 +144,24 @@ watch is locked, using it to wake the screen.
 ## Battery
 
 Negligible. The tap detector runs inside the accelerometer, which is already
-powered, so there is nothing to pay for while idle. Only after a first tap does
-the engine read the accelerometer stream (at 12.5 Hz, lifting power-save) for
-the ~1.5 s it takes to judge the password, then hands it back. A 250 ms timer
-runs only between the first tap of a password and the end of a count.
+powered, so there is nothing to pay for while idle. Only once a pair of taps
+has come out of silence does the engine read the accelerometer stream (at
+12.5 Hz, lifting power-save), and only until it has judged the password —
+about 1.5 s, or half a second if the wrist is plainly moving. A 250 ms timer
+runs only between the first tap of a password and the end of a count, and the
+widget is only redrawn when what it shows changes.
+
+In the simulation, the engine's own extras (stream, timers, redraws) stay
+under 3.5% of the watch's idle draw for every everyday activity in the
+realistic tap models; the worst case is ~11% (driving on a bumpy road with
+every pothole registering as a tap). Handling the
+taps themselves, which any tap-driven app pays for, adds up to ~15 µA while
+running (100 taps a minute).
 
 ## Data
 
 - `morse.log.json` — `[{t: unix seconds, s: severity, src: "tap"}]`, last 500
   events.
 - `morse.json` — settings.
+- `morse.r*.csv` — field-test recordings (StorageFiles), and `morse.rec.json`
+  while one is running.
