@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TAP-3 Symptom Trainer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1><span class="code">••&nbsp;•</span>TAP-3 Symptom Trainer</h1>
+    <label class="check small noprint"><input type="checkbox" id="opt-sound" checked> Sound for buzzes</label>
+  </header>
+
+  <nav class="tabs noprint" role="tablist">
+    <button role="tab" id="tab-log" data-view="log" aria-selected="true">Log</button>
+    <button role="tab" id="tab-practice" data-view="practice" aria-selected="false">Practice</button>
+    <button role="tab" id="tab-card" data-view="card" aria-selected="false">Wallet card</button>
+    <button role="tab" id="tab-setup" data-view="setup" aria-selected="false">Setup</button>
+  </nav>
+
+  <!-- LOG -->
+  <section id="view-log" class="grid" role="tabpanel" aria-labelledby="tab-log">
+    <div class="stack">
+      <div class="panel">
+        <div class="row" style="justify-content: space-between">
+          <h2>Log a symptom</h2>
+          <span class="muted small">Tap the pad, or press Space</span>
+        </div>
+        <button class="pad" id="log-pad" type="button">
+          <span>Tap here<small>Start with the password: tap, tap … tap</small></span>
+        </button>
+        <div class="phases" id="log-phases">
+          <div class="phase" data-phase="password"><span class="label">1 · Password</span><span class="dots" data-slot="password"></span></div>
+          <div class="phase" data-phase="symptom"><span class="label">2 · Symptom</span><span class="dots" data-slot="symptom"></span></div>
+          <div class="phase" data-phase="severity"><span class="label">3 · Severity</span><span class="dots" data-slot="severity"></span></div>
+        </div>
+        <p class="status" id="log-status" aria-live="polite">Waiting for the password.</p>
+      </div>
+      <div class="panel">
+        <div class="row" style="justify-content: space-between">
+          <h2>Logged</h2>
+          <button class="btn small" id="log-clear" type="button">Clear log</button>
+        </div>
+        <ol class="log" id="log-list"></ol>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="panel" id="log-hints">
+        <div class="row" style="justify-content: space-between">
+          <h2>Your codes</h2>
+          <label class="check small"><input type="checkbox" id="opt-hints" checked> Show while logging</label>
+        </div>
+        <div id="log-codes"></div>
+      </div>
+      <div class="panel">
+        <h3>How it works on the watch</h3>
+        <p class="small">The watch's tap sensor only feels knocks, so TAP-3 uses counts and pauses, like the tap code POWs used through cell walls. A dash isn't possible. Wait for the buzz after the password, tap the symptom, pause a second, tap the severity. The watch buzzes your code back; a long buzz means nothing was logged.</p>
+        <p class="small muted">Timing matches Mr Morse: first two taps within 0.35 s, then a pause of 0.45–1.5 s before the third.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRACTICE -->
+  <section id="view-practice" class="grid" role="tabpanel" aria-labelledby="tab-practice" hidden>
+    <div class="stack">
+      <div class="panel">
+        <div class="row" style="justify-content: space-between">
+          <div class="seg" role="group" aria-label="Drill">
+            <button type="button" id="mode-tap" aria-pressed="true">Tap it</button>
+            <button type="button" id="mode-listen" aria-pressed="false">Name it</button>
+          </div>
+          <span class="muted small" id="pr-session">Session: 0 of 10</span>
+        </div>
+
+        <div id="drill-tap" class="stack">
+          <h3>Tap this, no password needed</h3>
+          <p class="prompt" id="pr-prompt">…</p>
+          <button class="pad" id="pr-pad" type="button"><span>Tap here<small>Symptom, pause, severity</small></span></button>
+          <div class="row"><span class="muted small">You tapped</span><span class="dots lg" id="pr-dots"></span></div>
+        </div>
+
+        <div id="drill-listen" class="stack" hidden>
+          <h3>Listen to the echo and name it</h3>
+          <div class="row">
+            <button class="btn primary" type="button" id="ls-play">Play the buzz</button>
+            <span class="muted small">Same rhythm the watch buzzes back</span>
+          </div>
+          <div class="pad" id="ls-pad" aria-hidden="true"><span>…</span></div>
+          <div class="stack">
+            <span class="muted small">Symptom</span>
+            <div class="answers" id="ls-symptoms"></div>
+            <span class="muted small">Severity</span>
+            <div class="answers" id="ls-severities"></div>
+            <button class="btn" type="button" id="ls-check" disabled>Check</button>
+          </div>
+        </div>
+
+        <p class="status" id="pr-status" aria-live="polite"></p>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="panel">
+        <h2>Progress</h2>
+        <p class="small muted">Start with two symptoms. The next one unlocks when each one you have is above 90% over its last 10 tries. Weak codes come up more often.</p>
+        <div class="stack" id="pr-unlocks"></div>
+      </div>
+      <div class="panel">
+        <h2>Next review</h2>
+        <p id="pr-review" class="small"></p>
+        <p class="small muted">A short session of 10 spaced out over days beats one long cram. Pass a session (90%+) and the gap grows: 1, 2, 4, 7, then 14 days. Miss and it goes back to tomorrow.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CARD -->
+  <section id="view-card" class="stack" role="tabpanel" aria-labelledby="tab-card" hidden>
+    <div class="panel noprint">
+      <h2>Wallet card</h2>
+      <p class="small">Built from your setup, credit-card size (85.6 × 54 mm). To print it, open this demo from its file and use your browser's Print; only the cards print, at real size. Cut out, fold along the long edge, keep it with your cards.</p>
+      <p class="small muted">Use the card to look a code up when you're unsure, and practise so you stop needing it. Morse teachers found that reading from a chart builds a slow lookup habit.</p>
+    </div>
+    <div class="cards print-me" id="card-out"></div>
+  </section>
+
+  <!-- SETUP -->
+  <section id="view-setup" class="grid" role="tabpanel" aria-labelledby="tab-setup" hidden>
+    <div class="panel">
+      <h2>Your three symptoms</h2>
+      <p class="small muted">Put the one you log most first: it gets one tap. Morse code did the same, giving E, the commonest letter, a single dot.</p>
+      <div class="row">
+        <label for="preset" class="small">Start from</label>
+        <select id="preset"></select>
+      </div>
+      <div class="stack" id="symptom-fields"></div>
+      <label class="check"><input type="checkbox" id="opt-flare"> Add a 4th code, four taps = <b>Flare</b> (everything is bad)</label>
+      <p class="small muted">Optional, and best learned last. Four taps is at the edge of what people can count without looking.</p>
+    </div>
+    <div class="stack">
+      <div class="panel">
+        <h2>Codes</h2>
+        <div id="setup-codes"></div>
+      </div>
+      <div class="panel">
+        <h2>Reset</h2>
+        <div class="row">
+          <button class="btn" type="button" id="reset-progress">Reset practice progress</button>
+          <button class="btn" type="button" id="reset-confirm" hidden>Yes, reset</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="small muted noprint">Demo for the Mr Morse watch app. The research behind it is in the brief (research/symptom-code/BRIEF.md). Your setup and log stay in this browser.</p>
+</div>
+<script src="tap-language.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

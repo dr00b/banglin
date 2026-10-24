@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/dev.js",
-    "test": "node --test $(find apps -path '*/tests/*.test.js') $(find lib scripts -name '*.test.js' 2>/dev/null)",
+    "test": "node --test $(find apps -path '*/tests/*.test.js') $(find lib scripts research -name '*.test.js' -not -path '*/node_modules/*' 2>/dev/null)",
     "test:emulator": "npx playwright test",
     "test:all": "npm test && npm run test:emulator",
     "screenshots": "node scripts/screenshots.js"
