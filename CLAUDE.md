@@ -290,6 +290,10 @@ Ctrl-C twice to exit the console.
 
 ## Testing
 
+### Test Registry
+
+**`tests/REGISTRY.md` lists every test in the repo and what it's for.** Look there first to find what's already covered. When you add, rename or remove a test, update the registry in the same change: `tests/registry.test.js` fails `npm test` if a test is missing from it, if it lists one that no longer exists, or if an entry has no purpose. Tests generated in a loop are listed once by their template name (e.g. `` everyday: ${s.name} never arms ``), with the cases they cover described alongside.
+
 ### Unit Tests
 
 Use Node.js built-in test runner (`node:test`). No external test framework needed.
@@ -298,7 +302,17 @@ Use Node.js built-in test runner (`node:test`). No external test framework neede
 npm test
 ```
 
-Unit tests live next to each app in `apps/<appid>/tests/*.test.js` and use `node:test` + `node:assert`. `tests/helpers/bangle-mock.js` stubs globals like `Bangle`, `E`, `g`, and `require("Storage")`.
+Unit tests live next to each app in `apps/<appid>/tests/*.test.js` and use `node:test` + `node:assert`. `tests/helpers/bangle-mock.js` stubs globals like `Bangle`, `E`, `g`, and `require("Storage")`. Tests for shared tooling live in `tests/*.test.js` and `scripts/*.test.js`.
+
+### Simulated Sensors
+
+There's no wrist in CI, so motion-driven code is tested against a synthetic accelerometer. `tests/helpers/accel-sim.js` builds 400 Hz acceleration from scenarios (gravity through the wrist's pose, arm movement, impacts, tremor, noise). It turns that into what the firmware reports: `tap` events from a model of the KX022 tap engine, and the 12.5 Hz `accel` stream. Sessions are seeded, so failures reproduce. `tests/helpers/power-model.js` turns a session's work into an estimated current using the power table above.
+
+For mr-morse, `apps/mr-morse/tests/harness.js` runs the real `boot.js` under a fake clock, and `scenarios.js` describes everyday life (burping, knocks, typing, driving…) and real passwords. `simulation.test.js` proves the engine doesn't arm or burn battery when nobody is signalling. `SIM_SEEDS=20 npm test` runs a longer soak.
+
+### Field Tests
+
+The simulation is only as good as its model, so it's checked against the real watch. Mr Morse's **Field test** records a real session (taps, the accelerometer stream, and every decision the engine made) to a StorageFile. `npm run pull -- <appid> --port <device>` copies recordings into `apps/<appid>/tests/recordings/`. There `recordings.test.js` replays each one through the same engine and checks it decides exactly what the watch did. See `apps/mr-morse/tests/FIELD-TESTS.md`.
 
 ### Visual / Emulator Tests
 
