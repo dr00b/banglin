@@ -1,6 +1,6 @@
 # Test registry
 
-Every test in the repo, grouped by file, with what it's for. When you add, rename or remove a test, update this file in the same change. `tests/registry.test.js` fails `npm test` if a test is missing here, if this file lists a test that no longer exists, or if an entry has no purpose.
+Every test in the repo, grouped by file, with what it's for. Stormy (`apps/stormy`) is unfinished and left out until it's done. When you add, rename or remove a test, update this file in the same change. `tests/registry.test.js` fails `npm test` if a test is missing here, if this file lists a test that no longer exists, or if an entry has no purpose.
 
 Each `### path` heading is a test file. The rows under it are its tests, named exactly as in the code. A name with `${...}` comes from a loop and covers every case the loop makes; the tables under the `####` headings say what those cases are.
 
@@ -183,122 +183,6 @@ The app UI (`app.js`), settings page (`settings.js`) and widget (`widget.js`).
 | `settings persist changes` | Settings changes are written to `morse.json` in the right units. |
 | `widget is hidden without the engine and shows the count while counting` | Widget width with no engine, and the live count while counting. |
 
-## stormy
-
-### `apps/stormy/tests/app.test.js`
-
-The status menu, alert dismissal and trend graph (`app.js`).
-
-| Test | Purpose |
-|---|---|
-| `showMenu title is 'Stormy' when no alert pending` | Plain title with no alert pending. |
-| `showMenu title includes '!' when alert is pending` | The title flags a pending alert. |
-| `showMenu pressure row shows '--' when log is empty` | No readings yet shows a placeholder, not a crash. |
-| `showMenu pressure row shows reading when data available` | The latest pressure appears once logged. |
-| `showMenu delta value uses '+' prefix for positive change` | Rising pressure is shown with an explicit sign. |
-| `showMenu RH row hidden when usePhoneForecast is false` | No humidity row without the phone forecast. |
-| `showMenu RH row visible when usePhoneForecast is true and humidity available` | Humidity row with the forecast on and data present. |
-| `showMenu 'Dismiss alert' row appears only when alertPending` | Dismiss is offered when there is something to dismiss. |
-| `showMenu has no 'Dismiss alert' when alertPending is false` | ...and not otherwise. |
-| `dismissAlert clears alertPending in storage` | Dismissing persists. |
-| `dismissAlert triggers widget redraw when WIDGETS.stormy exists` | The widget drops its bolt straight away. |
-| `showTrendGraph shows 'Not enough data' when log has fewer than 2 entries` | The graph handles too little data. |
-| `showTrendGraph draws a line for each log segment when data exists` | The graph draws the log. |
-| `showTrendGraph draws pressure axis labels` | The graph labels its axis. |
-| `testBuzz calls Bangle.buzz and then shows menu again` | The test-buzz item buzzes and comes back to the menu. |
-| `showMenu trend row shows 'falling' for dropping pressure log` | The trend word reflects the log. |
-| `showMenu falls back gracefully when trend.js is missing` | A missing library file doesn't crash the menu. |
-
-### `apps/stormy/tests/boot.test.js`
-
-Background sampling and alerting (`boot.js`).
-
-| Test | Purpose |
-|---|---|
-| `appendLog stores a sample and returns the updated log` | A barometer sample lands in the log. |
-| `appendLog trims log to MAX_LOG (144) entries` | The 24 h log stays bounded. |
-| `doSample does nothing when enabled=false` | Disabled means no sampling. |
-| `doSample fires buzz when pressure drop exceeds threshold` | A threshold pressure drop buzzes. |
-| `doSample suppresses buzz during cooldown period` | No repeat buzz within the cooldown. |
-| `doSample skips sampling during sleep window` | No sampling inside the sleep window. |
-| `doSample skips sampling when sleep window wraps midnight and current time is after sleepStart` | Sleep windows that span midnight work. |
-| `doSample samples normally outside sleep window` | Daytime sampling works. |
-| `doSample handles barometer timeout (no pressure event) without crashing` | A barometer that never answers doesn't crash the boot code. |
-| `boot loads settings defaults when stormy.json is absent` | First run with no settings file works. |
-
-### `apps/stormy/tests/settings.test.js`
-
-The settings page (`settings.js`).
-
-| Test | Purpose |
-|---|---|
-| `settings defaults load when file is absent` | Defaults with no settings file. |
-| `toggling enabled persists via Storage.writeJSON` | Changes are saved. |
-| `enabling usePhoneForecast reveals forecast-only fields on next render` | Forecast-only options appear when the forecast is enabled. |
-
-### `apps/stormy/tests/trend.test.js`
-
-The trend detector (`lib/pressure-trend.js`).
-
-| Test | Purpose |
-|---|---|
-| `flat buffer produces no alert` | Steady weather is quiet. |
-| `3 hPa drop across 3 h fires pressure alert (onboard only)` | The default pressure trigger fires from the barometer alone. |
-| `small pressure drop below threshold does not fire` | Below threshold stays quiet. |
-| `6 C swing across 6 h fires temperature alert` | The temperature trigger fires. |
-| `humidity jump fires when usePhoneForecast is ON` | The humidity trigger fires with the forecast on. |
-| `humidity jump is IGNORED when usePhoneForecast is OFF` | ...and is ignored without it. |
-| `precipitation trigger fires with forecast` | Incoming rain fires with the forecast on. |
-| `precipitation trigger is IGNORED when usePhoneForecast is OFF` | ...and is ignored without it. |
-| `alert within cooldown is suppressed` | No repeat alert within the cooldown. |
-| `alert after cooldown passes does buzz` | Alerts resume after the cooldown. |
-| `summarize returns trend=falling for pressure drop` | Trend word for falling pressure. |
-| `summarize returns trend=rising for rising pressure` | Trend word for rising pressure. |
-| `summarize returns trend=steady for <1 hPa change` | Trend word for steady pressure. |
-| `summarize returns unknown for empty log` | No data gives unknown, not a guess. |
-| `detect returns no alerts for empty log` | No data, no alert. |
-| `detect returns no alerts when log has only one entry` | One sample can't make a trend. |
-| `pressure alert uses custom threshold from settings` | The pressure threshold setting is honoured. |
-| `temperature alert uses custom threshold from settings` | The temperature threshold setting is honoured. |
-| `summarize exposes dp3h, dT6h, dh6h deltas` | The deltas the UI shows are computed. |
-| `precipNext3h returns null when forecast is empty` | No forecast gives no rain figure. |
-| `precipNext3h returns null when all entries are outside the 3h window` | Only the next 3 h count. |
-| `precipNext3h returns max precip within 3h window` | The heaviest rain in the window is reported. |
-| `no cooldown (lastAlertMin null) always allows buzz` | First alert ever always buzzes. |
-| `latest returns null for empty log` | No data gives no latest reading. |
-
-### `apps/stormy/tests/weather-fetch.test.js`
-
-The phone forecast fetch (`lib/weather-fetch.js`).
-
-| Test | Purpose |
-|---|---|
-| `buildUrl includes latitude and longitude` | The request carries the location. |
-| `buildUrl includes required hourly fields` | The request asks for every field the detector uses. |
-| `buildUrl targets open-meteo forecast endpoint` | Right service, one day of forecast. |
-| `buildUrl URL-encodes special characters in coordinates` | Negative coordinates survive encoding. |
-| `sampleAtHour returns null for null forecast` | No forecast, no sample. |
-| `sampleAtHour returns null for empty time array` | Empty forecast, no sample. |
-| `sampleAtHour finds exact match` | Picks the forecast hour that matches. |
-| `sampleAtHour returns null when closest entry is more than 60 min away` | Won't use a forecast hour too far away. |
-| `sampleAtHour picks closest of two entries` | Picks the nearest hour. |
-| `sampleAtHour extracts all four fields` | Temperature, pressure, humidity and precipitation all come through. |
-| `fetchForecast calls onError when GB is not defined` | Without the phone bridge it errors cleanly. |
-
-### `apps/stormy/tests/widget.test.js`
-
-The clock-face widget (`widget.js`).
-
-| Test | Purpose |
-|---|---|
-| `widget registers in WIDGETS with area tl and width 24` | Widget registration. |
-| `draw calls fillCircle and fillRect for cloud shape` | Draws the cloud. |
-| `draw emits lightning bolt fillPoly when alertPending is true` | Draws the bolt when an alert is pending. |
-| `dark theme no-alert uses muted grey colour` | Theme colours: dark, no alert. |
-| `dark theme alert uses amber colour for cloud` | Theme colours: dark, alert. |
-| `light theme no-alert uses dark grey colour` | Theme colours: light, no alert. |
-| `widget draw is position-aware: offsets coordinates by x/y` | Draws where the widget bar puts it. |
-
 ## Tools and infrastructure
 
 ### `scripts/dev.test.js`
@@ -371,9 +255,3 @@ Run with `npm run test:emulator`. They need Chromium and network access to espru
 | Test | Purpose |
 |---|---|
 | `a field test records on the real firmware, and the pull code reads it back` | Runs `recorder.js` and the engine on the real Espruino firmware: the engine loads the recorder at boot, taps and readings are appended to a StorageFile, stopping removes the marker, and the code `npm run pull` sends lists and prints the file intact. |
-
-### `apps/stormy/tests/emulator.spec.js`
-
-| Test | Purpose |
-|---|---|
-| `stormy status screen renders with pressure trend` | The stormy status screen with a falling-pressure log, compared against a snapshot. |

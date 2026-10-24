@@ -11,6 +11,8 @@ const fs = require("node:fs");
 
 const ROOT = path.resolve(__dirname, "..");
 const REGISTRY = path.join(__dirname, "REGISTRY.md");
+// Apps still being written, left out of the registry until they're done.
+const UNFINISHED = ["apps/stormy"];
 
 function testFiles() {
   const out = [];
@@ -18,6 +20,7 @@ function testFiles() {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       if (e.name === "node_modules" || e.name.startsWith(".") || e.name.endsWith("-snapshots")) continue;
       const p = path.join(dir, e.name);
+      if (UNFINISHED.indexOf(path.relative(ROOT, p).split(path.sep).join("/")) >= 0) continue;
       if (e.isDirectory()) walk(p);
       else if (/\.(test|spec)\.js$/.test(e.name)) out.push(path.relative(ROOT, p).split(path.sep).join("/"));
     }

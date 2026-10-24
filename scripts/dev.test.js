@@ -51,10 +51,10 @@ test("large files are split into chunked writes that reassemble exactly", functi
 });
 
 test("evaluate entries store the expression's value, not its source", function() {
-  const app = dev.loadApp("stormy");
+  const app = dev.loadApp("mr-morse");
   const icon = app.files.find((f) => f.evaluate);
   const code = dev.buildInstall(app, [icon]);
-  assert.ok(code.includes("write(\"stormy.img\",(function()"), code.slice(0, 200));
+  assert.ok(code.includes("write(\"morse.img\",(function()"), code.slice(0, 200));
 });
 
 test("only changed files: no boot rebuild unless a boot file is included", function() {
@@ -84,8 +84,8 @@ test("port argument picks address vs device-name connection", function() {
 });
 
 test("argument parsing", function() {
-  assert.deepStrictEqual(dev.parseArgs(["stormy", "--port", "Bangle", "--ram"]),
-    { appId: "stormy", port: "Bangle", ram: true, once: false, dry: false });
-  assert.throws(() => dev.parseArgs(["stormy"]), /--port is required/);
-  assert.doesNotThrow(() => dev.parseArgs(["stormy", "--dry"]));
+  assert.deepStrictEqual(dev.parseArgs(["mr-morse", "--port", "Bangle", "--ram"]),
+    { appId: "mr-morse", port: "Bangle", ram: true, once: false, dry: false });
+  assert.throws(() => dev.parseArgs(["mr-morse"]), /--port is required/);
+  assert.doesNotThrow(() => dev.parseArgs(["mr-morse", "--dry"]));
 });

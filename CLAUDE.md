@@ -292,7 +292,7 @@ Ctrl-C twice to exit the console.
 
 ### Test Registry
 
-**`tests/REGISTRY.md` lists every test in the repo and what it's for.** Look there first to find what's already covered. When you add, rename or remove a test, update the registry in the same change: `tests/registry.test.js` fails `npm test` if a test is missing from it, if it lists one that no longer exists, or if an entry has no purpose. Tests generated in a loop are listed once by their template name (e.g. `` everyday: ${s.name} never arms ``), with the cases they cover described alongside.
+**`tests/REGISTRY.md` lists every test in the repo and what it's for.** Look there first to find what's already covered. When you add, rename or remove a test, update the registry in the same change: `tests/registry.test.js` fails `npm test` if a test is missing from it, if it lists one that no longer exists, or if an entry has no purpose. Stormy (`apps/stormy`) is unfinished and excluded from the registry for now. Tests generated in a loop are listed once by their template name (e.g. `` everyday: ${s.name} never arms ``), with the cases they cover described alongside.
 
 ### Unit Tests
 
