@@ -32,22 +32,22 @@ function runOnFakeWatch(code, files) {
 }
 
 test("install writes every storage entry and loads the app", function() {
-  const app = dev.loadApp("gesture_symptoms_v1");
+  const app = dev.loadApp("mr-morse");
   const r = runOnFakeWatch(dev.buildInstall(app), { "bootupdate.js": "BOOTUPDATE" });
   for (const f of app.files) {
     assert.strictEqual(r.files[f.name], f.evaluate ? "IMG" : f.content, f.name + " stored intact");
   }
-  assert.ok(r.files["gsym1.counter.js"].includes("createCounter"), "../../lib file resolved");
-  assert.deepStrictEqual(r.calls, [["eval", "BOOTUPDATE"], ["load", "gsym1.app.js"]]);
+  assert.ok(r.files["morse.tapseq.js"].includes("createSequencer"), "../../lib file resolved");
+  assert.deepStrictEqual(r.calls, [["eval", "BOOTUPDATE"], ["load", "morse.app.js"]]);
 });
 
 test("large files are split into chunked writes that reassemble exactly", function() {
-  const app = dev.loadApp("gesture_symptoms_v1");
-  const big = app.files.find((f) => f.name === "gsym1.app.js");
+  const app = dev.loadApp("mr-morse");
+  const big = app.files.find((f) => f.name === "morse.app.js");
   assert.ok(big.content.length > 2048);
   const code = dev.buildInstall(app, [big]);
-  assert.ok((code.match(/Storage"\)\.write\("gsym1\.app\.js"/g) || []).length > 2, "written in chunks");
-  assert.strictEqual(runOnFakeWatch(code).files["gsym1.app.js"], big.content);
+  assert.ok((code.match(/Storage"\)\.write\("morse\.app\.js"/g) || []).length > 2, "written in chunks");
+  assert.strictEqual(runOnFakeWatch(code).files["morse.app.js"], big.content);
 });
 
 test("evaluate entries store the expression's value, not its source", function() {
@@ -58,17 +58,17 @@ test("evaluate entries store the expression's value, not its source", function()
 });
 
 test("only changed files: no boot rebuild unless a boot file is included", function() {
-  const app = dev.loadApp("gesture_symptoms_v1");
-  const r = runOnFakeWatch(dev.buildInstall(app, app.files.filter((f) => f.name === "gsym1.app.js")),
+  const app = dev.loadApp("mr-morse");
+  const r = runOnFakeWatch(dev.buildInstall(app, app.files.filter((f) => f.name === "morse.app.js")),
     { "bootupdate.js": "BOOTUPDATE" });
-  assert.deepStrictEqual(r.calls, [["load", "gsym1.app.js"]]);
+  assert.deepStrictEqual(r.calls, [["load", "morse.app.js"]]);
 });
 
 test("RAM mode runs the installed boot file, then the app source", function() {
-  const app = dev.loadApp("gesture_symptoms_v1");
+  const app = dev.loadApp("mr-morse");
   const code = dev.buildRam(app);
-  assert.ok(code.startsWith("// gesture_symptoms_v1: gsym1.app.js in RAM\neval(require(\"Storage\").read(\"gsym1.boot.js\"));\n"));
-  assert.ok(code.endsWith(app.files.find((f) => f.name === "gsym1.app.js").content + "\n"));
+  assert.ok(code.startsWith("// mr-morse: morse.app.js in RAM\neval(require(\"Storage\").read(\"morse.boot.js\"));\n"));
+  assert.ok(code.endsWith(app.files.find((f) => f.name === "morse.app.js").content + "\n"));
   assert.ok(!/Storage"\)\.write/.test(code.split("\n").slice(0, 3).join("\n")), "no flash writes before the app");
 });
 
