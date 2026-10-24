@@ -66,14 +66,22 @@ test("live test draws every protocol state without blowing up", function(t) {
   const a = setup(t, {}, {});
   global.g.drawString = function(s) { strings.push(s); return this; };
   a.last()["Live test"]();
-  ["half", "waiting", "echo", "counting"].forEach(function(state) {
+  ["half", "waiting", "confirm", "echo", "counting"].forEach(function(state) {
     global.MORSE.state = state;
     global.MORSE.count = 2;
     global.MORSE.onUpdate();
   });
   assert.ok(strings.includes("Tap again"), strings.join("|"));
   assert.ok(strings.includes("Now one tap"));
+  assert.ok(strings.includes("Hold still"));
   assert.ok(strings.includes("Counting: 2"));
+  global.MORSE.state = "idle";
+  global.MORSE.rejected = { reason: "moving", t: Date.now() };
+  global.MORSE.motion = 0.25;
+  global.MORSE.lastTap = { t: Date.now(), dir: "left", double: false, skipped: false };
+  global.MORSE.onUpdate();
+  assert.ok(strings.includes("Wrist moving"), "says why it was thrown away");
+  assert.ok(strings.includes("left single move 0.25"), strings.join("|"));
 });
 
 test("event log lists newest first and deletes on confirm", async function(t) {

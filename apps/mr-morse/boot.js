@@ -1,7 +1,9 @@
 // Background tap engine. Registered at every app load, so it costs nothing
 // until the accelerometer's own tap detector fires: a pair of taps plus one
-// spaced tap arms it, and the taps after that are the severity. Exposed as
-// global.MORSE so the app and widget can show its state.
+// spaced tap arms it, and the taps after that are the severity. While a
+// password is going in, the engine also listens to the accelerometer stream
+// to check the wrist is still (patting a back or a swinging arm isn't).
+// Exposed as global.MORSE so the app and widget can show its state.
 (function() {
   var S = require("Storage");
   var settings = Object.assign({
@@ -11,6 +13,9 @@
     tapSens: 0,            // 0: leave the accelerometer's tap threshold alone
     quietMs: 4000,         // counting ends this long after the last tap
     waitMaxMs: 1500,
+    preQuietMs: 1000,      // a password has to start out of silence...
+    postQuietMs: 600,      // ...and be followed by it
+    stillMax: 0.1,         // median accel change (g) allowed while tapping; 0: off
     muteMs: 300,           // deaf after a buzz: the motor shakes the accelerometer
     cooldownMs: 3000,
     touchVetoMs: 250,
@@ -32,18 +37,26 @@
 
   var GS = global.MORSE = {
     settings: settings,
-    state: "idle",     // mirrors the sequencer: idle/half/waiting/echo/counting
+    state: "idle",     // mirrors the sequencer: idle/half/waiting/confirm/echo/counting
     count: 0,
     paused: false,     // set by the app when it wants the engine quiet
     dryRun: false,     // set by the app's Live test: report, don't log
     lastTap: null,     // {t, dir, double, skipped} for every tap, used or not
     taps: [],          // the last 16 of those, for the Live test's timeline
     last: null,        // {t, severity, dry} of the last completed count
+    rejected: null,    // {reason, t} of the last password thrown away
+    motion: null,      // wrist movement measured for the last password
     onUpdate: null     // app hook, called on any change
   };
 
-  var seq = T.createSequencer({ quietMs: settings.quietMs, waitMaxMs: settings.waitMaxMs });
+  var seq = T.createSequencer({
+    quietMs: settings.quietMs,
+    waitMaxMs: settings.waitMaxMs,
+    preQuietMs: settings.preQuietMs,
+    postQuietMs: settings.postQuietMs
+  });
   var timer = null, muteUntil = 0, cooldownUntil = 0, lastTouch = 0, wasLocked = true;
+  var samples = null, powerSave = true;
 
   function notify(widget) {
     if (widget && global.WIDGETS && WIDGETS.morse) WIDGETS.morse.draw();
@@ -80,6 +93,41 @@
     var busy = GS.state !== "idle";
     if (busy && !timer) timer = setInterval(function() { handle(seq.tick(Date.now())); }, 250);
     else if (!busy && timer) { clearInterval(timer); timer = null; }
+  }
+
+  // Wrist stillness. Tapping the watch with the other hand leaves the wrist
+  // nearly still; patting with the watch hand or knocking it mid-swing moves
+  // it a lot. The accelerometer stream is only listened to between the first
+  // tap of a password and the decision to echo it (~1.5 s), at 12.5 Hz since
+  // power-save may have slowed polling right down. The median of the
+  // per-sample change ignores the few samples a tap itself spikes.
+  function onAccel(a) {
+    samples.push(a.diff);
+    if (samples.length > 40) samples.shift();
+  }
+
+  function startMotion() {
+    if (!settings.stillMax || samples) return;
+    samples = [];
+    var o = Bangle.getOptions ? Bangle.getOptions() : {};
+    powerSave = o.powerSave !== false;
+    Bangle.setPollInterval(80);   // also turns power-save off
+    Bangle.on("accel", onAccel);
+  }
+
+  function stopMotion() {
+    if (!samples) return;
+    Bangle.removeListener("accel", onAccel);
+    samples = null;
+    if (powerSave) Bangle.setOptions({ powerSave: true });
+    if (settings.tapSens) applyTapConfig(); // power-save changes rewrite CNTL1
+  }
+
+  // Median accel change over the password, or null if too few samples.
+  function motion() {
+    if (!samples || samples.length < 4) return null;
+    var s = samples.slice().sort(function(a, b) { return a - b; });
+    return s[s.length >> 1];
   }
 
   function logEvent(severity) {
@@ -137,7 +185,18 @@
   }
 
   function handle(action) {
-    GS.state = seq.state();
+    if (action && action.type === "echo" && settings.stillMax) {
+      GS.motion = motion();
+      if (GS.motion !== null && GS.motion > settings.stillMax) {
+        seq.reject("moving", Date.now());
+        action = null;
+      }
+    }
+    var st = seq.state();
+    if (st === "half" || st === "waiting" || st === "confirm") startMotion();
+    else stopMotion();
+    GS.rejected = seq.rejected();
+    GS.state = st;
     GS.count = seq.count();
     if (action && action.type === "echo") echo();
     else if (action && action.type === "done") finish(action.severity);
@@ -152,7 +211,13 @@
     GS.lastTap = { t: now, dir: d && d.dir, double: !!(d && d.double), skipped: skip };
     GS.taps.push(GS.lastTap);
     while (GS.taps.length > 16) GS.taps.shift();
-    if (skip) { notify(false); return; }
+    if (skip) {
+      // Real taps the engine sat out still mean the wrist is busy, unlike
+      // the motor's own buzz.
+      if (now >= muteUntil) seq.heard(now);
+      notify(false);
+      return;
+    }
     handle(seq.tap(!!(d && d.double), now));
   });
 

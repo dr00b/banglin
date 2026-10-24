@@ -1,1 +1,2 @@
 0.01: New App! Forked from gesture_symptoms_v2.
+0.02: Fewer false positives: the password must start and end in silence, the pause must be twice the pair, the wrist must be still, and more than 5 taps cancels.

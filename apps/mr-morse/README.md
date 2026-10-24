@@ -11,23 +11,43 @@ you want to compare.
 
 ## The gesture
 
-1. **Password:** tap twice quickly, pause about three quarters of a second,
-   then tap once more.
-2. The watch **buzzes the pattern back** — buzz-buzz, pause, buzz. That's your
-   go-ahead.
+1. **Password:** with the watch arm still and no tapping for a second
+   beforehand, tap twice quickly, pause about three quarters of a second, then
+   tap once more — dot-dot … dot — and **stop**.
+2. About half a second later the watch **buzzes the pattern back** —
+   buzz-buzz, pause, buzz. That's your go-ahead.
 3. **Severity:** tap 1–5 times.
 4. After 4 s with no tap, the watch buzzes your number back and logs it. A
-   single long buzz means nothing was counted and nothing was logged — which is
-   also how you cancel: arm it, then do nothing.
+   single long buzz means nothing was logged — which is also how you cancel:
+   arm it, then do nothing.
 
 Every tap restarts the 4 s clock, so there's no rush. Tapping more than five
-times logs a 5.
+times cancels straight away (long buzz) rather than logging a 5: that many taps
+is far more likely to be patting than a severity.
 
 ## Why a password instead of one gesture
 
-Taps happen all day — door handles, keyboards, a wrist against a desk. A pair
-of taps followed by a *spaced* single is a shape everyday knocks don't make,
-and the watch stays completely deaf to single taps until it sees one.
+Taps happen all day — door handles, keyboards, a wrist against a desk, patting
+a baby's back. Those come in *trains* of fairly even knocks, often with the
+watch arm moving. The password is checked against that, all of which has to
+hold:
+
+| Check | Default | Rejects |
+|-------|---------|---------|
+| Silence before the first tap | 1 s | joining a train part-way |
+| Pair gap | 100–350 ms | slow or bouncing taps |
+| Pause before the last tap | ≥ 2× the pair gap, 450–1500 ms | three even taps |
+| Silence after the last tap | 0.6 s | a train that carries on |
+| Wrist still (`Still wrist`) | median < 0.1 g | patting with the watch hand, knocks mid-swing |
+| Counting taps | ≤ 5 | patting that continues after a false arm |
+
+A tap that breaks the rhythm doesn't just fail — it counts as noise, so a
+steady pat keeps the gate shut until it stops for a second. Taps the engine
+ignores for other reasons (cooldown, screen in use) count as noise too.
+
+A real "hold" (dot-dot-dash) isn't possible: the accelerometer's tap detector
+only reports impacts, not pressure. The long pause plus the silence after it
+plays the same role.
 
 ## How it works
 
@@ -55,12 +75,16 @@ Three things the app has to get right:
 ## App
 
 - **Live test** — try the gesture without logging it. Shows the protocol state,
-  the last tap (direction, single/double, and whether it was ignored) and a
-  timeline of the last 8 seconds of taps. Doubles are drawn tall, ignored taps
-  dotted.
+  why the last attempt was thrown away (*Not from quiet*, *Wrong rhythm*, *Tap
+  after end*, *Wrist moving*), the last tap (direction, single/double, whether
+  it was ignored, and how much the wrist moved) and a timeline of the last 8
+  seconds of taps. Doubles are drawn tall, ignored taps dotted. Use the `move`
+  number to tune `Still wrist`: tap normally and note it, then pat something
+  with the watch hand and note that; set the threshold between the two.
 - **Events** — newest first. Tap an event to delete a false positive.
 - **Settings** — detection on/off, only-when-locked, lock-while-counting, tap
-  sensitivity, count timeout, confirm window, and an optional sleep pause.
+  sensitivity, count timeout, confirm window, still wrist, and an optional
+  sleep pause. `preQuietMs` / `postQuietMs` can be set in `morse.json`.
   Changes apply when the app reloads.
 
 The widget (top right) shows a ring when idle, a blue dot while the password is
@@ -82,9 +106,10 @@ watch is locked, using it to wake the screen.
 ## Battery
 
 Negligible. The tap detector runs inside the accelerometer, which is already
-powered, so there is no polling to pay for and no accelerometer stream to read —
-v1's "high accuracy" setting has no counterpart here. A 250 ms timer runs only
-between the first tap of a password and the end of a count.
+powered, so there is nothing to pay for while idle. Only after a first tap does
+the engine read the accelerometer stream (at 12.5 Hz, lifting power-save) for
+the ~1.5 s it takes to judge the password, then hands it back. A 250 ms timer
+runs only between the first tap of a password and the end of a count.
 
 ## Data
 

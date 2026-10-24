@@ -14,7 +14,7 @@ function boot(t, opts) {
   opts = opts || {};
   const files = Object.assign({ "morse.tapseq.js": tapLib }, opts.files || {});
   if (opts.settings) files["morse.json"] = JSON.stringify(opts.settings);
-  const buzzes = [], writes = [], locks = [];
+  const buzzes = [], writes = [], locks = [], power = [];
   let locked = opts.locked === undefined ? true : opts.locked;
   const h = mock.install({
     files: files,
@@ -23,7 +23,9 @@ function boot(t, opts) {
       isLocked: function() { return locked; },
       setLocked: function(v) { locked = v; locks.push(v); },
       accelRd: function() { return 0x80; },
-      accelWr: function(reg, data) { writes.push([reg, data]); }
+      accelWr: function(reg, data) { writes.push([reg, data]); },
+      setPollInterval: function(ms) { power.push(["poll", ms]); },
+      setOptions: function(o) { power.push(["options", o]); }
     }
   });
 
@@ -64,19 +66,25 @@ function boot(t, opts) {
   }
 
   return {
-    h: h, clock: clock, buzzes: buzzes, writes: writes, locks: locks, timers: timers,
+    h: h, clock: clock, buzzes: buzzes, writes: writes, locks: locks, timers: timers, power: power,
     advance: advance,
     setLocked: function(v) { locked = v; },
     tap: function(double, dir) { h.Bangle.emit("tap", { dir: dir || "left", double: !!double }); },
     touch: function() { h.Bangle.emit("touch", 1); },
+    // n accelerometer samples 80 ms apart, each changing by diff g.
+    accel: function(n, diff) {
+      for (let i = 0; i < n; i++) { h.Bangle.emit("accel", { diff: diff }); advance(80); }
+    },
+    accelListeners: function() { return (h.listeners.accel || []).length; },
     state: function() { return global.MORSE.state; },
     log: function() { return h.storage.readJSON("morse.log.json", 1) || []; },
-    // The password at the user's own rhythm, then the wait for the echo.
+    // The password at the user's own rhythm, then the silence after it and
+    // the echo. Leaves the clock just past the mute, ready to count.
     password: function(fused) {
       if (fused) { this.tap(true); } else { this.tap(false); advance(230); this.tap(false); }
       advance(700);
       this.tap(false);
-      advance(900); // echo plays, counting starts, mute expires
+      advance(1800); // silence, echo plays, counting starts, mute expires
     }
   };
 }
@@ -123,11 +131,12 @@ test("the echo's own buzz is not counted", function(t) {
   b.advance(230);
   b.tap(false);
   b.advance(700);
-  b.tap(false);          // password complete; the watch starts buzzing
-  b.advance(300);
+  b.tap(false);          // password complete
+  b.advance(900);        // the silence after it; the watch starts buzzing
+  assert.ok(b.buzzes.length > 0, "echoing");
   b.tap(false);          // the motor shaking the accelerometer
   assert.strictEqual(global.MORSE.lastTap.skipped, true);
-  b.advance(600);
+  b.advance(900);
   assert.strictEqual(global.MORSE.count, 0, "nothing counted from the buzz");
 });
 
@@ -173,12 +182,72 @@ test("arming and then tapping nothing logs nothing", function(t) {
   assert.strictEqual(b.buzzes[b.buzzes.length - 1], 300, "one long buzz on cancel");
 });
 
-test("severity is capped at five", function(t) {
+test("more than five taps cancels instead of logging a five", function(t) {
   const b = boot(t, {});
   b.password(true);
   for (let i = 0; i < 7; i++) { b.tap(false); b.advance(250); }
   b.advance(4400);
-  assert.strictEqual(b.log()[0].s, 5);
+  assert.strictEqual(b.log().length, 0);
+  assert.strictEqual(b.buzzes[b.buzzes.length - 1], 300, "the cancel buzz");
+});
+
+test("burping: a minute of steady pats logs nothing", function(t) {
+  const b = boot(t, {});
+  [300, 450, 600, 800].forEach(function(every) {
+    for (let i = 0; i < 60000 / every; i++) { b.tap(i % 7 === 3); b.advance(every); }
+  });
+  b.advance(10000);
+  assert.strictEqual(b.log().length, 0);
+  assert.strictEqual(b.buzzes.length, 0, "not even an echo");
+});
+
+test("a moving wrist is not tapping: the password is dropped", function(t) {
+  const b = boot(t, {});
+  b.tap(false);
+  assert.deepStrictEqual(b.power[0], ["poll", 80], "full-rate accel while deciding");
+  assert.strictEqual(b.accelListeners(), 1);
+  b.accel(3, 0.3);
+  b.tap(false);
+  b.accel(9, 0.3);
+  b.tap(false);
+  b.accel(8, 0.3);
+  b.advance(1000);
+  assert.strictEqual(b.state(), "idle");
+  assert.strictEqual(b.buzzes.length, 0);
+  assert.strictEqual(global.MORSE.rejected.reason, "moving");
+  assert.ok(global.MORSE.motion > 0.2);
+  assert.strictEqual(b.accelListeners(), 0, "stopped listening");
+  assert.deepStrictEqual(b.power[b.power.length - 1], ["options", { powerSave: true }]);
+});
+
+test("a still wrist with a few tap spikes arms", function(t) {
+  const b = boot(t, {});
+  b.tap(false);
+  b.accel(1, 0.4);           // the tap itself
+  b.accel(2, 0.01);
+  b.tap(false);
+  b.accel(1, 0.4);
+  b.accel(8, 0.01);
+  b.tap(false);
+  b.accel(1, 0.4);
+  b.accel(7, 0.01);
+  b.advance(1000);
+  assert.strictEqual(b.state(), "counting");
+  assert.ok(global.MORSE.motion < 0.05);
+  assert.strictEqual(b.accelListeners(), 0, "not listening while counting");
+});
+
+test("the stillness check can be switched off", function(t) {
+  const b = boot(t, { settings: { stillMax: 0 } });
+  b.tap(false);
+  assert.strictEqual(b.accelListeners(), 0);
+  assert.deepStrictEqual(b.power, []);
+  b.advance(230);
+  b.tap(false);
+  b.advance(700);
+  b.tap(false);
+  b.advance(1800);
+  assert.strictEqual(b.state(), "counting");
 });
 
 test("taps right after an event are ignored (cooldown)", function(t) {

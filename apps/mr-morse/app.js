@@ -37,15 +37,24 @@
       return;
     }
     var WINDOW = 8000;      // ms of tap history drawn
+    var WHY = {
+      busy: /*LANG*/"Not from quiet",
+      rhythm: /*LANG*/"Wrong rhythm",
+      after: /*LANG*/"Tap after end",
+      moving: /*LANG*/"Wrist moving"
+    };
 
     function status() {
       if (GS.state === "counting") return /*LANG*/"Counting: " + GS.count;
       if (GS.state === "echo") return /*LANG*/"Confirming";
+      if (GS.state === "confirm") return /*LANG*/"Hold still";
       if (GS.state === "waiting") return /*LANG*/"Now one tap";
       if (GS.state === "half") return /*LANG*/"Tap again";
       if (GS.last && GS.last.dry && Date.now() - GS.last.t < 8000) {
         return GS.last.severity ? /*LANG*/"Severity " + GS.last.severity : /*LANG*/"Cancelled";
       }
+      var r = GS.rejected;
+      if (r && Date.now() - r.t < 3000) return WHY[r.reason] || r.reason;
       return /*LANG*/"Tap x2, then x1";
     }
 
@@ -53,7 +62,8 @@
       var lt = GS.lastTap;
       if (!lt) return /*LANG*/"No taps yet";
       return (lt.dir || "?") + " " + (lt.double ? /*LANG*/"double" : /*LANG*/"single") +
-        (lt.skipped ? /*LANG*/" - ignored" : "");
+        (lt.skipped ? /*LANG*/" - ignored" : "") +
+        (typeof GS.motion === "number" ? " " + /*LANG*/"move " + GS.motion.toFixed(2) : "");
     }
 
     function draw() {

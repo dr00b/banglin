@@ -10,6 +10,7 @@
     tapSens: 0,
     quietMs: 4000,
     waitMaxMs: 1500,
+    stillMax: 0.1,
     muteMs: 300,
     pauseInSleep: false,
     sleepStart: timeUtils.encodeTime({h: 23, m: 0}),
@@ -66,6 +67,14 @@
         value: settings.waitMaxMs / 1000, min: 0.6, max: 2, step: 0.1,
         format: function(v) { return v.toFixed(1) + "s"; },
         onchange: function(v) { settings.waitMaxMs = Math.round(v * 1000); save(); }
+      },
+      // How much the wrist may move while the password goes in. Patting a
+      // back or a knock mid-swing moves it a lot; lower is stricter. The
+      // Live test shows what your own tapping measures.
+      /*LANG*/"Still wrist": {
+        value: settings.stillMax, min: 0, max: 0.3, step: 0.02,
+        format: function(v) { return v ? "<" + v.toFixed(2) + "g" : /*LANG*/"off"; },
+        onchange: function(v) { settings.stillMax = Math.round(v * 100) / 100; save(); }
       },
       // How long the engine stays deaf after a buzz. Raise it if the
       // confirmation buzz ever counts itself as a tap.

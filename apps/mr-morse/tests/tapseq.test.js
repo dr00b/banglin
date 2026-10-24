@@ -10,11 +10,24 @@ const { createSequencer } = require(path.resolve(__dirname, "../../../lib/morse-
 // confirming tap 700 ms after that.
 const PAIR_MS = 230, CONFIRM_MS = 930;
 
-// Play the password, either as two singles or as one fused "double" event.
+// Play the password, either as two singles or as one fused "double" event,
+// then the silence after it. Returns what the silence produced.
 function password(s, t0, fused) {
   if (fused) s.tap(true, t0);
   else { s.tap(false, t0); s.tap(false, t0 + PAIR_MS); }
-  return s.tap(false, t0 + CONFIRM_MS);
+  assert.strictEqual(s.tap(false, t0 + CONFIRM_MS), null, "no echo until the silence after");
+  assert.strictEqual(s.state(), "confirm");
+  return s.tick(t0 + CONFIRM_MS + 600);
+}
+
+// Feed evenly spaced taps, as a hand patting a back does.
+function train(s, t0, n, every) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    out.push(s.tap(false, t0 + i * every));
+    out.push(s.tick(t0 + i * every + every / 2));
+  }
+  return out.filter(Boolean);
 }
 
 test("the measured rhythm arms, as two singles or one fused double", function() {
@@ -33,14 +46,94 @@ test("a lone tap goes nowhere", function() {
   assert.strictEqual(s.state(), "idle");
 });
 
+// --- False positives ---------------------------------------------------
+
+test("burping: steady pats at any pace never arm", function() {
+  [250, 300, 400, 500, 600, 700, 800, 1000].forEach(function(every) {
+    const s = createSequencer();
+    assert.deepStrictEqual(train(s, 0, 30, every), [], "every " + every + " ms");
+  });
+});
+
+test("three even taps are not dot-dot-pause-dot", function() {
+  const s = createSequencer();
+  s.tap(false, 0);
+  s.tap(false, 300);
+  assert.strictEqual(s.tap(false, 600), null, "pause no longer than the pair");
+  assert.strictEqual(s.state(), "idle");
+  assert.strictEqual(s.rejected().reason, "rhythm");
+});
+
+test("the pause has to be clearly longer than the pair", function() {
+  const s = createSequencer();
+  s.tap(false, 0);
+  s.tap(false, 300);
+  s.tap(false, 800);          // 500 ms pause, but under 2 x 300
+  assert.strictEqual(s.state(), "idle");
+  const ok = createSequencer();
+  ok.tap(false, 0);
+  ok.tap(false, 300);
+  ok.tap(false, 900);         // 600 ms: twice the pair
+  assert.strictEqual(ok.state(), "confirm");
+});
+
+test("a password has to start out of silence", function() {
+  const s = createSequencer();
+  s.tap(false, 0);            // the tail of something else
+  s.tick(500);
+  assert.strictEqual(s.state(), "idle");
+  s.tap(false, 900);          // a perfect password, but only 900 ms later
+  s.tap(false, 900 + PAIR_MS);
+  s.tap(false, 900 + CONFIRM_MS);
+  assert.strictEqual(s.tick(900 + CONFIRM_MS + 600), null);
+  assert.strictEqual(s.state(), "idle");
+  assert.strictEqual(s.rejected().reason, "busy");
+});
+
+test("taps the caller sat out still count as noise", function() {
+  const s = createSequencer();
+  s.heard(0);                 // e.g. during the cooldown after an event
+  assert.strictEqual(s.tap(true, 500), null);
+  assert.strictEqual(s.state(), "idle");
+  assert.deepStrictEqual(password(s, 2000, true), { type: "echo" }, "fine once it's quiet");
+});
+
+test("a tap straight after the password cancels it", function() {
+  const s = createSequencer();
+  s.tap(false, 0);
+  s.tap(false, PAIR_MS);
+  s.tap(false, CONFIRM_MS);
+  assert.strictEqual(s.tap(false, CONFIRM_MS + 400), null, "the knocking went on");
+  assert.strictEqual(s.state(), "idle");
+  assert.strictEqual(s.rejected().reason, "after");
+  assert.strictEqual(s.tick(CONFIRM_MS + 1000), null, "and no echo later");
+});
+
+test("a fused double in the middle of a sequence is noise", function() {
+  const s = createSequencer();
+  s.tap(true, 0);
+  s.tap(true, 800);
+  assert.strictEqual(s.state(), "idle");
+  assert.strictEqual(s.rejected().reason, "rhythm");
+});
+
 test("two taps too far apart are not a pair", function() {
   const s = createSequencer();
   s.tap(false, 0);
-  s.tap(false, 700);          // too late: this is a new first tap
-  assert.strictEqual(s.state(), "half");
-  assert.strictEqual(s.tap(false, 1400), null, "still no pair");
-  assert.strictEqual(s.state(), "half");
+  s.tap(false, 500);
+  assert.strictEqual(s.state(), "idle");
 });
+
+test("the caller can veto an attempt", function() {
+  const s = createSequencer();
+  s.tap(false, 0);
+  s.tap(false, PAIR_MS);
+  s.reject("moving", 300);
+  assert.strictEqual(s.state(), "idle");
+  assert.deepStrictEqual(s.rejected(), { reason: "moving", t: 300 });
+});
+
+// --- The password itself ----------------------------------------------
 
 test("a bounce off the first tap is ignored, the real pair still lands", function() {
   const s = createSequencer();
@@ -49,15 +142,6 @@ test("a bounce off the first tap is ignored, the real pair still lands", functio
   assert.strictEqual(s.state(), "half");
   s.tap(false, 230);
   assert.strictEqual(s.state(), "waiting");
-});
-
-test("a confirming tap too soon is part of the pair, a later one confirms", function() {
-  const s = createSequencer();
-  s.tap(false, 0);
-  s.tap(false, 230);
-  assert.strictEqual(s.tap(false, 400), null, "170 ms later: still the pair");
-  assert.strictEqual(s.state(), "waiting");
-  assert.deepStrictEqual(s.tap(false, 930), { type: "echo" });
 });
 
 test("the wait expires silently", function() {
@@ -70,17 +154,7 @@ test("the wait expires silently", function() {
   assert.strictEqual(s.state(), "idle");
 });
 
-test("another pair restarts the wait", function() {
-  const s = createSequencer();
-  password(s, 0, true);
-  const s2 = createSequencer();
-  s2.tap(true, 0);
-  s2.tap(true, 800);          // changed their mind; the clock starts again
-  assert.strictEqual(s2.state(), "waiting");
-  assert.strictEqual(s2.tick(2000), null, "measured from the second pair");
-  assert.strictEqual(s2.state(), "waiting");
-  assert.deepStrictEqual(s2.tap(false, 1600), { type: "echo" });
-});
+// --- Counting -----------------------------------------------------------
 
 test("severity counts singles as one and fused pairs as two", function() {
   const s = createSequencer();
@@ -94,11 +168,14 @@ test("severity counts singles as one and fused pairs as two", function() {
   assert.strictEqual(s.state(), "idle");
 });
 
-test("severity is capped at five", function() {
+test("more than five taps is patting, not a count: cancelled at once", function() {
   const s = createSequencer();
   s.armed(0);
-  for (let i = 1; i <= 8; i++) s.tap(false, i * 250);
-  assert.strictEqual(s.count(), 5);
+  const out = [];
+  for (let i = 1; i <= 6; i++) out.push(s.tap(false, i * 250));
+  assert.deepStrictEqual(out.slice(0, 5), [null, null, null, null, null], "five is fine");
+  assert.deepStrictEqual(out[5], { type: "cancel" });
+  assert.strictEqual(s.state(), "idle");
 });
 
 test("each tap restarts the four second clock", function() {
@@ -128,7 +205,7 @@ test("a very long count is cut off at the hard cap", function() {
 test("taps during the echo are ignored", function() {
   const s = createSequencer();
   password(s, 0, true);
-  assert.strictEqual(s.tap(false, 1000), null);
+  assert.strictEqual(s.tap(false, 1600), null);
   assert.strictEqual(s.state(), "echo");
   assert.strictEqual(s.count(), 0);
 });
