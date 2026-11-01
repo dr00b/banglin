@@ -1,6 +1,7 @@
 // Top-right badge: a blue dot while the password is being tapped in, a blue
 // count while counting, green with the severity for a minute after an event is
-// logged, otherwise a dim ring.
+// logged, otherwise a dim ring. A small yellow dot in the corner means events
+// are waiting for the NUC to sync them.
 (function() {
   function draw() {
     var GS = global.MORSE;
@@ -20,6 +21,7 @@
     } else {
       g.drawCircle(cx, cy, 8).fillCircle(cx, cy, 2);
     }
+    if (GS.unsent) g.setColor("#ff0").fillCircle(this.x + 21, this.y + 3, 2);
   }
 
   WIDGETS.morse = { area: "tr", width: global.MORSE ? 24 : 0, draw: draw };

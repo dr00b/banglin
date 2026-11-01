@@ -1,0 +1,12 @@
+{
+  "name": "banglin-sync",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Syncs Mr Morse events from a Bangle.js to Guava Health",
+  "license": "Apache-2.0",
+  "bin": { "banglin-sync": "bin/banglin-sync" },
+  "engines": { "node": ">=20" },
+  "optionalDependencies": {
+    "node-ble": "^1.13.0"
+  }
+}

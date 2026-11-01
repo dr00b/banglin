@@ -58,7 +58,8 @@ module.exports = [
   {
     // Shown with the real defaults, not the emulator's relaxed UI guards.
     name: "settings",
-    code: seed({ onlyWhenLocked: true, lockDuringCount: true }) + app + "__pick(\"Settings\");\n"
+    code: seed({ onlyWhenLocked: true, lockDuringCount: true, symptom: "Headache", symptoms: ["Headache", "Nausea"] }) +
+      app + "__pick(\"Settings\");\n"
   },
   {
     name: "widget",

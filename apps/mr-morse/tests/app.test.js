@@ -221,3 +221,58 @@ test("widget is hidden without the engine and shows the count while counting", f
   w.draw();
   assert.deepStrictEqual(strings, ["3"]);
 });
+
+test("main menu shows when the NUC last synced and how many events are waiting", function(t) {
+  const a = setup(t, {
+    "morse.log.json": JSON.stringify([{ id: 1, t: 1, s: 2 }, { id: 2, t: 2, s: 4 }, { t: 3, s: 1 }]),
+    "morse.sync.json": JSON.stringify({ acked: 1, last: Math.floor(new Date(2026, 0, 2, 9, 5).getTime() / 1000) })
+  }, {});
+  const m = a.last();
+  assert.strictEqual(m["Synced"].value, "2/1 09:05");
+  assert.strictEqual(m["Waiting"].value, 2, "id 2, and the event from before ids");
+  const never = setup(t, {}, {}).last();
+  assert.deepStrictEqual([never["Synced"].value, never["Waiting"].value], ["never", 0]);
+});
+
+test("deleting an event already in Guava warns that it's still there", async function(t) {
+  const prompts = [];
+  const a = setup(t, {
+    "morse.log.json": JSON.stringify([{ id: 1, t: 1, s: 2 }, { id: 2, t: 2, s: 4 }]),
+    "morse.sync.json": JSON.stringify({ acked: 1, last: 5 })
+  }, {});
+  a.h.E.showPrompt = function(msg) { prompts.push(msg); return Promise.resolve(false); };
+  global.E.showPrompt = a.h.E.showPrompt;
+  a.last()["Events (2)"]();
+  const keys = Object.keys(a.last()).filter((k) => /\/5/.test(k));
+  a.last()[keys[0]]();   // newest: id 2, not synced
+  a.last()[keys[1]]();   // id 1, synced
+  await new Promise((r) => setImmediate(r));
+  assert.strictEqual(prompts[0], "Delete this event?");
+  assert.match(prompts[1], /Already in Guava/);
+});
+
+test("settings pick the symptom from the list in morse.json", function(t) {
+  const s = settingsMenu(t, { "morse.json": JSON.stringify({ symptoms: ["Headache", "Nausea"], symptom: "Headache" }) });
+  const m = s.menus[s.menus.length - 1];
+  assert.strictEqual(m["Symptom"].format(m["Symptom"].value), "Headache");
+  m["Symptom"].onchange(1);
+  assert.strictEqual(JSON.parse(s.h.storage.files["morse.json"]).symptom, "Nausea");
+  const d = settingsMenu(t, {}).menus.pop();
+  assert.strictEqual(d["Symptom"].format(d["Symptom"].value), "Symptom", "a default until a list is set");
+});
+
+test("widget shows a yellow dot while events wait to sync", function(t) {
+  const h = mock.install({});
+  t.after(function() { h.restore(); delete global.MORSE; });
+  const colours = [];
+  global.g.setColor = function(c) { colours.push(c); return this; };
+  global.MORSE = { state: "idle", count: 0, last: null, unsent: false };
+  (0, eval)(src("../widget.js"));
+  const w = global.WIDGETS.morse;
+  w.x = 150; w.y = 0;
+  w.draw();
+  assert.strictEqual(colours.indexOf("#ff0"), -1);
+  global.MORSE.unsent = true;
+  w.draw();
+  assert.ok(colours.indexOf("#ff0") >= 0);
+});

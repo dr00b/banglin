@@ -1,0 +1,9 @@
+{
+  "guavaEnv": "test",
+  "watch": "F1:23:45:67:89:AB",
+  "transport": "bluez",
+  "intervalMin": 15,
+  "redirectUri": "https://nuc.example-tailnet.ts.net/oauth/callback",
+  "callbackPort": 8787,
+  "severityMap": { "1": 2, "2": 4, "3": 6, "4": 8, "5": 10 }
+}

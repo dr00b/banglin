@@ -304,3 +304,43 @@ test("a field-test recording in progress keeps counts out of the event log", fun
   assert.deepStrictEqual(b.metrics().done, [1], "counted");
   assert.strictEqual(b.log().length, 0, "not logged");
 });
+
+test("logged events get ids that are never reused, and the symptom from settings", function(t) {
+  // The NUC has already synced up to id 7, and the newest event (7) was then
+  // deleted on the watch: the next id must still be 8.
+  const b = boot(t, {
+    settings: { symptom: "Migraine" },
+    files: {
+      "morse.log.json": JSON.stringify([{ id: 5, t: 1, s: 2, sym: "Migraine", src: "tap" }]),
+      "morse.sync.json": JSON.stringify({ acked: 7, last: 1 })
+    }
+  });
+  b.password(true);
+  b.tap(false);
+  b.advance(4400);
+  const e = b.log()[1];
+  assert.deepStrictEqual([e.id, e.s, e.sym, e.src], [8, 1, "Migraine", "tap"]);
+});
+
+test("the unsent flag is set by a new event and read cheaply at boot", function(t) {
+  const synced = boot(t, { files: {
+    "morse.log.json": JSON.stringify([{ id: 3, t: 1, s: 2 }]),
+    "morse.sync.json": JSON.stringify({ acked: 3 })
+  } });
+  assert.strictEqual(global.MORSE.unsent, false);
+  synced.password(true);
+  synced.tap(false);
+  synced.advance(4400);
+  assert.strictEqual(global.MORSE.unsent, true);
+  synced.restore();
+
+  const legacy = boot(t, { files: { "morse.log.json": JSON.stringify([{ t: 1, s: 2 }]) } });
+  assert.strictEqual(global.MORSE.unsent, true, "events from before ids have never been synced");
+  legacy.restore();
+  // As the firmware's writeJSON writes it: keys unquoted.
+  const firmware = boot(t, { files: { "morse.log.json": "[{id:2,t:1,s:2},{id:4,t:2,s:3}]", "morse.sync.json": "{\"acked\":3}" } });
+  assert.strictEqual(global.MORSE.unsent, true, "id 4 is above the cursor");
+  firmware.restore();
+  boot(t, {});
+  assert.strictEqual(global.MORSE.unsent, false, "no log, nothing waiting");
+});

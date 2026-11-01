@@ -282,6 +282,10 @@ npm run dev -- gesture_symptoms_v2 --port "Bangle.js 1a2b"
 
 Ctrl-C twice to exit the console.
 
+### Guava sync (relay/)
+
+`relay/` is `banglin-sync`, the service on a home computer that pulls Mr Morse events off the watch over Bluetooth and writes them to Guava Health. `relay/core` must stay plain Node with no dependencies (it may later run under Termux on a phone); only `relay/transports/bluez.js` uses `node-ble`. See `relay/README.md`.
+
 ### Reference
 
 - [Bangle.js API Reference](https://banglejs.com/reference)

@@ -6,10 +6,21 @@
   function loadLog() { return S.readJSON(LOG_FILE, 1) || []; }
   function saveLog(log) { S.writeJSON(LOG_FILE, log); }
 
+  // Written by the NUC each time it syncs: {acked: highest id sent to Guava,
+  // last: unix seconds}. An event without an id predates sync: never sent.
+  function loadSync() { return S.readJSON("morse.sync.json", 1) || {}; }
+  function isSent(e, sync) { return e.id !== undefined && e.id <= (sync.acked || 0); }
+
   function pad2(n) { return ("0" + n).substr(-2); }
   function fmtStamp(t) {
     var d = new Date(t * 1000);
     return d.getDate() + "/" + (d.getMonth() + 1) + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+  }
+  // Just the time if it was today.
+  function fmtWhen(t) {
+    var d = new Date(t * 1000);
+    return d.toDateString() === new Date().toDateString()
+      ? pad2(d.getHours()) + ":" + pad2(d.getMinutes()) : fmtStamp(t);
   }
 
   // Screens that take over the display register their teardown here.
@@ -215,7 +226,7 @@
 
   function showLog() {
     leave();
-    var log = loadLog();
+    var log = loadLog(), sync = loadSync();
     var menu = { "": { title: /*LANG*/"Events" }, "< Back": showMain };
     if (!log.length) menu[/*LANG*/"No events yet"] = function() {};
     for (var i = log.length - 1; i >= Math.max(0, log.length - 30); i--) {
@@ -223,7 +234,10 @@
       while (menu[key]) key += " ";
       menu[key] = (function(idx) {
         return function() {
-          E.showPrompt(/*LANG*/"Delete this event?").then(function(ok) {
+          // Deleting here doesn't reach Guava once the event has been synced.
+          E.showPrompt(isSent(log[idx], sync)
+            ? /*LANG*/"Already in Guava: delete it there too. Delete here?"
+            : /*LANG*/"Delete this event?").then(function(ok) {
             if (ok) { log.splice(idx, 1); saveLog(log); }
             showLog();
           });
@@ -245,7 +259,10 @@
     leave();
     var menu = { "": { title: /*LANG*/"Mr Morse" }, "< Back": function() { load(); } };
     menu[/*LANG*/"Live test"] = showLive;
-    menu[/*LANG*/"Events (" + loadLog().length + ")"] = showLog;
+    var log = loadLog(), sync = loadSync();
+    menu[/*LANG*/"Events (" + log.length + ")"] = showLog;
+    menu[/*LANG*/"Synced"] = { value: sync.last ? fmtWhen(sync.last) : /*LANG*/"never" };
+    menu[/*LANG*/"Waiting"] = { value: log.filter(function(e) { return !isSent(e, sync); }).length };
     menu[/*LANG*/"Field test"] = showField;
     menu[/*LANG*/"Detection"] = { value: GS ? (GS.rec ? /*LANG*/"recording" : /*LANG*/"on") : /*LANG*/"off" };
     // Settings are read by the boot code, so reload the app to apply them.

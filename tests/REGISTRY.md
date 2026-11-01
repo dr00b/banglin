@@ -133,6 +133,8 @@ The background engine (`boot.js`) under a fake clock: muting, locking, logging, 
 | `protocol constants can be tuned from morse.json` | Any protocol constant set in `morse.json` overrides the default. |
 | `the widget is only redrawn when what it shows changes` | 60 pats cause a handful of widget redraws, not 60 (battery). |
 | `a field-test recording in progress keeps counts out of the event log` | While recording, counts are made but not written to the event log. |
+| `logged events get ids that are never reused, and the symptom from settings` | A new event's id is above every id in the log and the NUC's acked cursor, so deleting a synced event can't make an id repeat (Guava would drop it); it carries the Symptom setting. |
+| `the unsent flag is set by a new event and read cheaply at boot` | The widget's "waiting to sync" flag: false when everything is acked or there's no log, true after a new event or with events from before ids. |
 
 ### `apps/mr-morse/tests/simulation.test.js`
 
@@ -182,6 +184,94 @@ The app UI (`app.js`), settings page (`settings.js`) and widget (`widget.js`).
 | `tap direction defaults to any and saves the one chosen` | Tap direction starts at any, Still wrist at 0.10 g, and a chosen direction is saved. |
 | `settings persist changes` | Settings changes are written to `morse.json` in the right units. |
 | `widget is hidden without the engine and shows the count while counting` | Widget width with no engine, and the live count while counting. |
+| `main menu shows when the NUC last synced and how many events are waiting` | The Synced and Waiting lines, counting events from before ids as waiting, and "never" before the first sync. |
+| `deleting an event already in Guava warns that it's still there` | Deleting a synced event says it must be deleted in Guava too; an unsynced one gets the plain prompt. |
+| `settings pick the symptom from the list in morse.json` | The Symptom picker shows the names from `morse.json`, saves the one chosen, and has a default. |
+| `widget shows a yellow dot while events wait to sync` | The yellow corner dot appears only while the engine says events are unsent. |
+
+## relay (banglin-sync)
+
+The NUC-side sync service in `relay/`: it pulls events off the watch over Bluetooth and writes them to Guava. Helpers (not tests): `relay/tests/fake-watch.js` runs the code sent to the watch against the Bangle mock and answers like the Bluetooth console (prompts, 20-byte packets); `relay/tests/fake-guava.js` is Guava's OAuth and data-entries API as a `fetch`, with rotating refresh tokens and identifier deduplication.
+
+### `relay/tests/watch-code.test.js`
+
+The JavaScript sent to the watch (`relay/core/watch-code.js`), run against the mocked Storage, and the parsing of what it prints.
+
+| Test | Purpose |
+|---|---|
+| `the dump sends only events above the acked cursor, lowest id first` | Only unsent events come out, sorted by id whatever their order in the file, with just the fields Guava needs. |
+| `events from before ids existed get ids above every used one, and are kept` | Old events get fresh ids above both the log and the cursor, written back to the watch, and the Symptom setting as their name. |
+| `a batch limit takes the lowest ids, so acking the top of a batch skips nothing` | With a limit, the lowest ids go first, so acking the batch's highest id never marks an unsent event as sent. |
+| `the dump sets the watch clock when it has drifted, and the timezone every time` | Without a phone the NUC keeps the watch's time: set when over 2 s out, timezone (DST) every sync. |
+| `the ack moves the cursor up but never back, and stamps the sync time` | The acked cursor only increases; an ack with nothing new just records the sync time. |
+| `the ack tells the engine what's still waiting and redraws the widget` | After an ack the engine's unsent flag matches what's left, and the widget redraws. |
+| `a dump cut short or miscounted is rejected` | Missing lines, a wrong count, garbled JSON, an error instead of output, or a missing ack confirmation all fail rather than ack. |
+| `console prompts and carriage returns don't confuse the parser` | The console's `>` prompts and `\r\n` endings are stripped. |
+| `bad options never reach the watch` | Non-numeric time, timezone, limit or ack id are refused before any code is built. |
+
+### `relay/tests/entries.test.js`
+
+Watch events to Guava symptom entries (`relay/core/entries.js`).
+
+| Test | Purpose |
+|---|---|
+| `watch severity 1-5 maps to Guava's 0-10 scale, and an unmapped one is refused` | The default map (2, 4, 6, 8, 10) and refusal of anything outside Guava's range. |
+| `times carry the local offset at that instant, across DST` | Timestamps use the offset in force at each event (winter and summer in New York, half-hour zones). |
+| `each entry's identifier ties it to one event on one watch` | The full entry shape, and the identifier depends only on the watch and event id, so a resend is recognised. |
+| `symptom names come from the event, with a fallback and Guava's 255-char limit` | Missing names fall back to "Symptom", long ones are cut to 255, and malformed events are refused. |
+
+### `relay/tests/guava.test.js`
+
+The Guava client (`relay/core/guava.js`) against the fake Guava.
+
+| Test | Purpose |
+|---|---|
+| `signing in pushes a PKCE S256 request, then exchanges the code with its verifier` | PAR carries an S256 challenge, the scopes and redirect URI; the authorize URL uses the request_uri; the code exchange proves the verifier and stores tokens with their expiry. |
+| `a redirect whose state doesn't match is refused` | A forged or stale redirect never reaches the token endpoint. |
+| `rotated tokens are saved before either is used` | After a refresh, the new pair is persisted before the access token is sent anywhere. |
+| `a valid access token is reused without refreshing` | No refresh while the access token has more than a minute left. |
+| `concurrent calls share one refresh, so the rotated token is never reused` | Three callers at once cause one refresh, so Guava's reuse rule can't lock us out. |
+| `an expired sign-in (invalid_grant) asks for auth again` | A dead or missing refresh token becomes a "reauth" error naming the command to run. |
+| `a 401 refreshes once and retries` | A revoked access token is refreshed and the write retried once. |
+| `symptoms are posted as one data-entries batch, client credentials as form fields only` | The write body shape, credentials never sent as Basic auth too, and unknown environments refused. |
+
+### `relay/tests/cycle.test.js`
+
+One sync (`relay/core/cycle.js`): the fake watch over the real UART transport, and the fake Guava behind the real client.
+
+| Test | Purpose |
+|---|---|
+| `events reach Guava and only then is the watch acked` | Unsent events are posted with mapped severity, the cursor moves, and the connection is closed. |
+| `if Guava fails nothing is acked and the next cycle sends the same events` | A Guava error leaves the cursor alone and still disconnects; the next cycle delivers. |
+| `a lost ack resends with the same identifiers, which Guava ignores` | When the ack doesn't get through, the next cycle resends and Guava keeps no duplicates. |
+| `with nothing waiting, Guava isn't called but the sync time is stamped` | An empty sync makes no Guava call but updates "Synced" on the watch. |
+| `a backlog bigger than one batch drains over several cycles without gaps` | Batches of 3 deliver 7 events in order, none skipped. |
+| `events logged by the real engine sync end to end` | An event logged by the real `boot.js` (password, three taps) arrives in Guava with its symptom and severity 6. |
+
+### `relay/tests/cli.test.js`
+
+The `banglin-sync` command (`relay/core/cli.js`) with a temporary state folder.
+
+| Test | Purpose |
+|---|---|
+| `unknown commands and options print usage` | Bad input exits 2 with usage or the offending option. |
+| `status shows the setup and sign-in state, never the secret` | Status names the watch, transport and sign-in state without printing secrets or tokens. |
+| `run --once syncs through the chosen transport and saves rotated tokens` | A full run: transport chosen by config, events synced, rotated tokens written to the state folder. |
+| `a watch out of range is logged and the run carries on` | A failed connection is reported and exits non-zero without throwing. |
+
+### `relay/tests/portability.test.js`
+
+Keeps `relay/core` runnable on a phone under Termux later.
+
+| Test | Purpose |
+|---|---|
+| `core loads without node-ble installed` | Every core module loads with node-ble blocked, so `npm install --omit=optional` works where there's no BlueZ. |
+| `core uses no fixed system paths or Linux-only services` | No hard-coded `/var`, `/etc`, `/home`… paths, systemd or D-Bus in core. |
+| `the state folder follows BANGLIN_SYNC_HOME, then XDG_STATE_HOME, then home` | State folder resolution, including a Termux home. |
+| `state files are written atomically and private to the owner` | Temp file plus rename leaves no partial or stray file, and token files are mode 0600. |
+| `the cycle runs unchanged on a push-style transport` | A transport that holds pushed events and answers the ack itself (the future phone design) works with the same cycle. |
+| `run --transport http reports it isn't built yet, without crashing` | The phone transport's slot exists and fails cleanly. |
+| `timestamps don't depend on Intl` | ISO times are right with `Intl` removed, as on Node builds without full ICU. |
 
 ## Tools and infrastructure
 
@@ -255,3 +345,4 @@ Run with `npm run test:emulator`. They need Chromium and network access to espru
 | Test | Purpose |
 |---|---|
 | `a field test records on the real firmware, and the pull code reads it back` | Runs `recorder.js` and the engine on the real Espruino firmware: the engine loads the recorder at boot, taps and readings are appended to a StorageFile, stopping removes the marker, and the code `npm run pull` sends lists and prints the file intact. |
+| `the NUC's sync dump and ack run on the real firmware` | The code banglin-sync sends (`relay/core/watch-code.js`) on real Espruino: unsent events come out lowest id first with an old event given a fresh id and the Symptom setting, the ack writes the cursor, and the engine's boot-time unsent check reads the firmware's unquoted-key JSON. |

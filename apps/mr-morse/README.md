@@ -158,10 +158,28 @@ every pothole registering as a tap). Handling the
 taps themselves, which any tap-driven app pays for, adds up to ~15 µA while
 running (100 taps a minute).
 
+## Sync to Guava Health
+
+A computer at home (a NUC) syncs events to [Guava Health](https://guavahealth.com)
+over Bluetooth every 15 minutes while the watch is in range: no phone needed.
+Setup, security and how it works: [relay/README.md](../../relay/README.md).
+
+- **Symptom** (Settings) is the Guava symptom new events are logged under.
+  The choices come from `"symptoms"` in `morse.json`, e.g.
+  `"symptoms": ["Headache", "Nausea"]`; Guava creates any it doesn't know.
+- The app shows when the NUC last **Synced** and how many events are
+  **Waiting**. The widget has a small yellow dot while any are waiting.
+- Deleting an event in **Events** after it has synced doesn't remove it from
+  Guava (the prompt says so): delete it there too.
+- The NUC also keeps the watch's clock and timezone right.
+
 ## Data
 
-- `morse.log.json` — `[{t: unix seconds, s: severity, src: "tap"}]`, last 500
-  events.
+- `morse.log.json` — `[{id, t: unix seconds, s: severity, sym: symptom, src: "tap"}]`,
+  last 500 events. Ids are never reused (events from before 0.04 get one at
+  their first sync).
+- `morse.sync.json` — `{acked: highest id synced, last: unix seconds}`, written
+  only by the NUC.
 - `morse.json` — settings.
 - `morse.r*.csv` — field-test recordings (StorageFiles), and `morse.rec.json`
   while one is running.

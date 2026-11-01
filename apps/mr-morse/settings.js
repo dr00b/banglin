@@ -15,8 +15,11 @@
     muteMs: 300,
     pauseInSleep: false,
     sleepStart: timeUtils.encodeTime({h: 23, m: 0}),
-    sleepEnd: timeUtils.encodeTime({h: 7, m: 0})
+    sleepEnd: timeUtils.encodeTime({h: 7, m: 0}),
+    symptom: "Symptom",
+    symptoms: ["Symptom"]  // names to pick from; edit the list in morse.json
   }, S.readJSON(FILE, 1) || {});
+  if (settings.symptoms.indexOf(settings.symptom) < 0) settings.symptoms.unshift(settings.symptom);
 
   var DIRS = ["", "front", "back", "left", "right", "top", "bottom"];
 
@@ -42,6 +45,12 @@
     var m = {
       "": { title: /*LANG*/"Mr Morse" },
       "< Back": back,
+      // The Guava symptom new events are logged under.
+      /*LANG*/"Symptom": {
+        value: settings.symptoms.indexOf(settings.symptom), min: 0, max: settings.symptoms.length - 1,
+        format: function(v) { return settings.symptoms[v]; },
+        onchange: function(v) { settings.symptom = settings.symptoms[v]; save(); }
+      },
       /*LANG*/"Detection": {
         value: !!settings.enabled,
         onchange: function(v) { settings.enabled = v; save(); }

@@ -1,0 +1,23 @@
+# systemd unit for the NUC. Install:
+#   sudo useradd --system --create-home --groups bluetooth banglin
+#   sudo cp -r relay /opt/banglin-sync && (cd /opt/banglin-sync && sudo npm install --omit=dev)
+#   sudo install -m 600 -o banglin /dev/null /etc/banglin-sync.env   # then add the two GUAVA_ lines
+#   sudo cp relay/banglin-sync.service /etc/systemd/system/ && sudo systemctl enable --now banglin-sync
+[Unit]
+Description=Sync Mr Morse events from the Bangle.js to Guava Health
+After=bluetooth.target network-online.target
+Wants=network-online.target
+
+[Service]
+User=banglin
+Environment=BANGLIN_SYNC_HOME=/var/lib/banglin-sync
+# GUAVA_CLIENT_ID=... and GUAVA_CLIENT_SECRET=...
+EnvironmentFile=/etc/banglin-sync.env
+StateDirectory=banglin-sync
+StateDirectoryMode=0700
+ExecStart=/usr/bin/node /opt/banglin-sync/bin/banglin-sync run
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target

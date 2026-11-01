@@ -22,7 +22,8 @@
     touchVetoMs: 250,
     pauseInSleep: false,   // logging at 3am is the point, so off by default
     sleepStart: 23 * 3600000,
-    sleepEnd: 7 * 3600000
+    sleepEnd: 7 * 3600000,
+    symptom: "Symptom"     // name each event is logged under in Guava
   }, S.readJSON("morse.json", 1) || {});
   if (!settings.enabled) return;
 
@@ -48,6 +49,7 @@
     rejected: null,    // {reason, t} of the last password thrown away
     motion: null,      // wrist movement measured for the last password
     recording: false,  // a field-test recording is running: don't log
+    unsent: false,     // events waiting for the NUC to sync them to Guava
     onUpdate: null,    // app hook, called on any change
     trace: null        // recorder/test hook: trace(kind, arg) on every decision
   };
@@ -70,7 +72,7 @@
     var s = GS.state;
     if (s === "counting") return "c" + GS.count;
     return (s === "waiting" || s === "confirm" || s === "echo" ? "arming" : "idle") +
-      (GS.last ? GS.last.t : "");
+      (GS.last ? GS.last.t : "") + (GS.unsent ? "u" : "");
   }
 
   function notify(widget) {
@@ -169,12 +171,35 @@
     return a === null ? b : b === null ? a : Math.max(a, b);
   }
 
+  // Sync state, written only by the NUC when it acks: {acked, last}.
+  function acked() {
+    return (S.readJSON("morse.sync.json", 1) || {}).acked || 0;
+  }
+
+  // Each event gets an id above every id in the log and every id already
+  // synced, so an id is never reused: Guava drops an entry whose identifier
+  // it has seen, so a reused one would be lost.
   function logEvent(severity) {
-    var log = S.readJSON("morse.log.json", 1) || [];
-    log.push({ t: Math.round(Date.now() / 1000), s: severity, src: "tap" });
+    var log = S.readJSON("morse.log.json", 1) || [], id = acked();
+    for (var i = 0; i < log.length; i++) if (log[i].id > id) id = log[i].id;
+    log.push({ id: id + 1, t: Math.round(Date.now() / 1000), s: severity, sym: settings.symptom, src: "tap" });
     while (log.length > 500) log.shift();
     S.writeJSON("morse.log.json", log);
+    GS.unsent = true;
   }
+
+  // Whether anything is waiting to sync, without parsing the log on every
+  // app load: the newest entry is the last one in the file, and id is its
+  // first key. The firmware's writeJSON leaves keys unquoted ({id:3,...});
+  // node's quotes them. Entries from before ids existed were never synced.
+  function hasUnsent() {
+    var raw = S.read("morse.log.json");
+    if (!raw || raw.length < 3) return false;
+    var a = raw.lastIndexOf("{id:"), b = raw.lastIndexOf('{"id":');
+    if (a < 0 && b < 0) return true;
+    return parseInt(a > b ? raw.substr(a + 4) : raw.substr(b + 6), 10) > acked();
+  }
+  GS.unsent = hasUnsent();
 
   function buzzCount(n) {
     mute(300 + n * 320 + settings.muteMs);
