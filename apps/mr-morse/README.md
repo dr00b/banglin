@@ -143,20 +143,90 @@ watch is locked, using it to wake the screen.
 
 ## Battery
 
-Negligible. The tap detector runs inside the accelerometer, which is already
-powered, so there is nothing to pay for while idle. Only once a pair of taps
-has come out of silence does the engine read the accelerometer stream (at
-12.5 Hz, lifting power-save), and only until it has judged the password —
-about 1.5 s, or half a second if the wrist is plainly moving. A 250 ms timer
-runs only between the first tap of a password and the end of a count, and the
-widget is only redrawn when what it shows changes.
+**About 3–5% off a charge for all-day use** — roughly a day out of four
+weeks. A whole day of tap monitoring costs about as much as keeping the
+backlight on for one minute.
 
-In the simulation, the engine's own extras (stream, timers, redraws) stay
-under 3.5% of the watch's idle draw for every everyday activity in the
-realistic tap models; the worst case is ~11% (driving on a bumpy road with
-every pothole registering as a tap). Handling the
-taps themselves, which any tap-driven app pays for, adds up to ~15 µA while
-running (100 taps a minute).
+### Where the cost comes from
+
+| Part | When it runs | Cost |
+|------|--------------|------|
+| Tap detector | Always, inside the accelerometer | Nothing extra: the chip is powered anyway |
+| Handling a tap | Each tap the chip reports (yours, or any knock) | ~3 ms of CPU each (assumed) |
+| 12.5 Hz accel stream | From a pair of taps out of silence until the password is judged (~1.5 s, ~0.5 s if the wrist is moving) | +0.15 mA while on, plus ~1 ms of CPU per reading |
+| 250 ms timer | From the first password tap to the end of a count | ~1 ms of CPU per tick |
+| Widget redraw | Only when what it shows changes | ~10 ms of CPU |
+| Buzzes and log write | Only when you actually log something | Not modelled; a few seconds a day |
+
+So the cost scales with **how often the wrist gets knocked**, not with time.
+Sitting still or sleeping costs effectively nothing.
+
+### By activity
+
+Average extra current from `tests/simulation.test.js`, using the realistic
+tap models (worst case, where every impact registers as a tap, in brackets).
+The watch averages about 300 µA over the shop's quoted four weeks
+(200 mAh ÷ 672 h).
+
+| Activity | Taps/min | Extra current | Charge lasts (27.8 d without) |
+|----------|----------|---------------|------------------------------|
+| Sleep | 0.2 | 0.1 µA | 27.8 d (no change) |
+| Typing | 6 | 3 µA (8) | 27.5 d (27.1) |
+| Driving | 1.5 | 2.5 µA (18) | 27.6 d (26.2) |
+| Day mix | 45–51 | 9.5 µA (16) | 26.9 d (26.4) |
+| Chores | 47–49 | 12 µA (13) | 26.7 d (26.6) |
+| Running | 64–97 | 15 µA (24) | 26.5 d (25.8) |
+
+Day mix all day, every day, is the realistic upper end: ~3% (~5% in the worst
+case). The engine's own extras (stream, timers, redraws) are under 3.5% of
+the watch's idle draw in the realistic models (≤11% worst, driving). The
+rest is handling taps, which any tap-driven app pays. `npm test` fails if
+those extras go over budget.
+
+To reprint these numbers:
+
+```bash
+node --test --test-reporter=spec apps/mr-morse/tests/simulation.test.js
+```
+
+### How sure is this?
+
+It's a model, built from the power table in
+[CLAUDE.md](../../CLAUDE.md#power-consumption) and
+[`tests/helpers/power-model.js`](../../tests/helpers/power-model.js). Two
+things in it are guesses:
+
+- **How often real life produces taps.** The field tests measure this (see
+  below).
+- **CPU time per tap.** Assumed to be 3 ms, on the high side. It's the biggest
+  term, so if it's really 1 ms the busier totals above roughly halve.
+
+### Profiling it with your own day
+
+1. **Your real tap rate, on the computer.** Record a Field test of an ordinary
+   stretch of your day (`day-mix`, `chores`, `burp-pat`…), pull it, and run:
+   ```bash
+   node apps/mr-morse/tests/recording.js apps/mr-morse/tests/recordings/<file>.csv
+   ```
+   The `battery` block replays your real taps and readings through the engine
+   and prices them with the same model: `extrasUa`, `totalUa`, `streamOnPct`,
+   and `daysPerCharge` for a typical watch. The recorder's own 12.5 Hz stream
+   (~0.3 mA while recording) is left out, so the figure is what the engine
+   would cost on its own. This replaces the guessed tap rate with yours.
+2. **The firmware's own estimate, on the watch.** On firmware 2v22 or later,
+   `E.getPowerUsage()` returns an estimated draw in µA, per peripheral and in
+   total. It's a snapshot of what's on at that moment, so it misses the short
+   bursts this app makes. Use it to check nothing stays on after a password
+   (the stream should be back off within ~2 s).
+3. **A real measurement.** Only an ammeter in the battery line can see a
+   difference this small: a Nordic Power Profiler Kit II, or a 1 Ω resistor
+   and an oscilloscope. That means opening the watch. It's also the only way to
+   measure CPU time per tap, the model's main guess. Measure it while tapping
+   and while idle with detection on and off.
+
+Comparing battery percentage over a week with detection on and off won't
+work: a 3% difference is lost in the noise of the battery gauge and how much
+you used the screen.
 
 ## Data
 

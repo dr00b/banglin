@@ -6,6 +6,7 @@
 
 const path = require("node:path");
 const harness = require(path.resolve(__dirname, "harness.js"));
+const power = require(path.resolve(__dirname, "../../../tests/helpers/power-model.js"));
 
 // Decisions that matter: what the user would notice, and why not.
 const DECISIONS = ["reject", "echo", "done", "cancel"];
@@ -148,7 +149,27 @@ function summary(rec) {
   };
 }
 
-module.exports = { parse: parse, replay: replay, compare: compare, decisions: decisions, rhythm: rhythm, summary: summary };
+// What the engine would have cost over a real session: the recording is
+// replayed without the recorder, so its own 12.5 Hz stream isn't counted.
+// "extras" is the engine's stream, timers and redraws; "total" adds handling
+// each tap. Days are for a typical 4-week watch (power-model.js).
+function battery(rec, overrides) {
+  const m = replay(rec, overrides).metrics;
+  const extras = power.estimate({ accel: m.accel, timers: m.timerFires, draws: m.draws, fastMs: m.fastMs }, m.durationMs);
+  const life = power.life(m.power.extraUa);
+  return {
+    extrasUa: +extras.extraUa.toFixed(2),
+    totalUa: +m.power.extraUa.toFixed(2),
+    streamOnPct: +(100 * m.fastMs / m.durationMs).toFixed(2),
+    buzzMs: m.buzzMs,
+    daysPerCharge: +life.days.toFixed(1) + " -> " + life.withExtra.toFixed(1),
+    lostPct: +life.lostPct.toFixed(1)
+  };
+}
+
+module.exports = {
+  parse: parse, replay: replay, compare: compare, decisions: decisions, rhythm: rhythm, summary: summary, battery: battery
+};
 
 // node apps/mr-morse/tests/recording.js <file.csv> [--set key=value ...]
 // Prints the summary; with --set, also replays with those settings changed.
@@ -164,7 +185,7 @@ if (require.main === module) {
   }
   if (!file) { console.error("usage: node recording.js <file.csv> [--set key=value ...]"); process.exit(2); }
   const rec = parse(fs.readFileSync(file, "utf8"));
-  console.log(JSON.stringify(summary(rec), null, 2));
+  console.log(JSON.stringify(Object.assign(summary(rec), { battery: battery(rec) }), null, 2));
   if (Object.keys(overrides).length) {
     const r = replay(rec, overrides);
     console.log("replayed with " + JSON.stringify(overrides) + ": logged " + JSON.stringify(r.metrics.done) +

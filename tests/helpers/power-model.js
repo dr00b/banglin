@@ -29,4 +29,16 @@ function estimate(counts, durationMs) {
   return { cpuMs: cpuMs, extraUa: extraMa * 1000, pctOfIdle: 100 * extraMa / MA.idle };
 }
 
-module.exports = { MA, CPU_MS, estimate };
+// Bangle.js 2's battery, and a typical watch's average draw: the "4 weeks"
+// the shop quotes is 200 mAh over 672 h, about 0.3 mA.
+const BATTERY_MAH = 200;
+const TYPICAL_UA = 300;
+
+// Days a charge lasts at baseUa, and with extraUa on top.
+function life(extraUa, baseUa) {
+  baseUa = baseUa || TYPICAL_UA;
+  const days = (ua) => BATTERY_MAH * 1000 / ua / 24;
+  return { days: days(baseUa), withExtra: days(baseUa + extraUa), lostPct: 100 * extraUa / (baseUa + extraUa) };
+}
+
+module.exports = { MA, CPU_MS, BATTERY_MAH, TYPICAL_UA, estimate, life };
