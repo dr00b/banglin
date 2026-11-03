@@ -157,6 +157,7 @@ Field recordings from the watch (`recorder.js`), replayed through the same engin
 | `recorder: counts are traced but not logged, and it stops itself` | Recording doesn't fill the event log, removes its marker when time is up, and leaves the watch at rest. |
 | `recorder: writes to flash every couple of seconds, not per reading` | The recorder buffers: about one flash write every 2 s, not one per 12.5 Hz reading. |
 | `recording summary describes the session at the sensor` | The summary used to compare a real session with its simulated scenario: duration, tap directions, what was logged, the password rhythm, whether taps arrive on the accelerometer poll, and accel-stream time. |
+| `recording battery estimate leaves out the recorder's own cost` | `recording.battery()` replays a session without the recorder and prices the engine's work with the power model, so a real session's battery cost isn't inflated by the recorder's own 12.5 Hz stream. |
 | `recording parser flags lines it can't read` | Garbled or truncated lines are reported, not silently dropped. |
 | `field recordings: none yet` | Placeholder, skipped while there are no field recordings. |
 | `field recording ${f}: the replay decides what the watch decided` | For each real recording: every line parses, and the node replay makes the same decisions as the watch did, within 300 ms. |

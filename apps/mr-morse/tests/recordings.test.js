@@ -95,6 +95,19 @@ test("recording summary describes the session at the sensor", function() {
   assert.ok(sum.streamOnPct > 0 && sum.streamOnPct < 5, "stream on " + sum.streamOnPct + "%");
 });
 
+test("recording battery estimate leaves out the recorder's own cost", function(t) {
+  const s = recordSession();
+  const b = recording.battery(recording.parse(s.text));
+  // The recorder held 12.5 Hz for the whole session; the engine alone only
+  // around each password.
+  assert.ok(b.streamOnPct > 0 && b.streamOnPct < 5, "engine stream on " + b.streamOnPct + "%");
+  assert.ok(b.extrasUa > 0 && b.extrasUa <= b.totalUa, JSON.stringify(b));
+  assert.ok(b.totalUa < 30, "tens of uA at most, not the recorder's ~150: " + b.totalUa);
+  assert.ok(b.lostPct > 0 && b.lostPct < 10, "share of a charge: " + b.lostPct + "%");
+  t.diagnostic(JSON.stringify(b));
+  assert.ok(b.buzzMs > 0, "the two passwords' buzzes are counted");
+});
+
 test("recording parser flags lines it can't read", function() {
   const p = recording.parse("#{\"v\":1}\na,10,0,0,-1000,5\nt,20,front,0\nzzz\na,oops\ne,30,done,3\n");
   assert.deepStrictEqual(p.bad, [4, 5]);

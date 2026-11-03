@@ -24,7 +24,7 @@ If level 1 holds, the simulation's results apply to the real engine. If level 3 
    ```
    Each file's line count is checked on arrival, so a garbled transfer is reported rather than saved. Fallback: in the Espruino Web IDE, open Storage and save the `morse.r….csv` file into that folder.
 3. **Test:** `npm test`. Each recording is replayed (levels 1 and 2).
-4. **Look:** `node apps/mr-morse/tests/recording.js apps/mr-morse/tests/recordings/<file>.csv` prints the session's summary (level 3).
+4. **Look:** `node apps/mr-morse/tests/recording.js apps/mr-morse/tests/recordings/<file>.csv` prints the session's summary (level 3), and a `battery` block: what the engine would have cost over that session, without the recorder's own overhead (see the README's Battery section).
 5. **Commit** the recordings. A 10-minute session is about 200 KB.
 
 While recording, the app doesn't write counted events to your event log, and the Live test is unavailable, because it changes how the engine behaves. Recording keeps the accelerometer at 12.5 Hz and handles every reading, which costs roughly an extra 0.3 mA. That's negligible for a 30-minute session, but it's why sessions have a time limit.
