@@ -192,6 +192,7 @@ The `npm run dev` upload builder (`scripts/dev.js`), run against a fake watch.
 | Test | Purpose |
 |---|---|
 | `install writes every storage entry and loads the app` | An install writes every file intact (including `../../lib` ones), rebuilds boot code and loads the app. |
+| `a full install adds the launcher entry; re-uploading one file doesn't` | A full install writes `<id>.info`, which is how the launcher finds the app; re-uploads on save skip that flash write. |
 | `large files are split into chunked writes that reassemble exactly` | Big files go up in chunks and come out identical. |
 | `evaluate entries store the expression's value, not its source` | Icons are stored as their value, as the app loader does. |
 | `only changed files: no boot rebuild unless a boot file is included` | Re-uploading app code alone skips the boot rebuild. |

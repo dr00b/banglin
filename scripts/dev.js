@@ -67,6 +67,24 @@ function writeFileCode(f) {
   return code;
 }
 
+// The launcher lists apps from their <id>.info file, which the app loader
+// writes. Without it an installed app can't be opened again.
+function writeInfoCode(app) {
+  const appFile = app.files.find((f) => /\.app\.js$/.test(f.name));
+  const icon = app.files.find((f) => f.evaluate);
+  const info = {
+    id: app.id,
+    name: app.meta.shortName || app.meta.name,
+    type: app.meta.type,
+    version: app.meta.version,
+    tags: app.meta.tags,
+    src: appFile && appFile.name,
+    icon: icon && icon.name,
+    files: app.files.map((f) => f.name).concat(app.id + ".info").join(",")
+  };
+  return "require(\"Storage\").writeJSON(" + JSON.stringify(app.id + ".info") + "," + JSON.stringify(info) + ");\n";
+}
+
 // Upload script that installs `files` (default: all of the app's files) and
 // restarts into the app. Boot code is rebuilt when a .boot.js file changes,
 // as the app loader does after an install.
@@ -76,6 +94,7 @@ function buildInstall(app, files) {
   let code = "// " + app.id + ": " + files.map((f) => f.name).join(", ") + "\n";
   code += "E.showMessage(\"Uploading...\");\n";
   for (const f of files) code += writeFileCode(f);
+  if (files.length === app.files.length) code += writeInfoCode(app);
   if (files.some((f) => /\.boot\.js$/.test(f.name))) {
     code += "if (require(\"Storage\").read(\"bootupdate.js\")) eval(require(\"Storage\").read(\"bootupdate.js\"));\n";
   }

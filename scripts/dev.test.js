@@ -19,6 +19,7 @@ function runOnFakeWatch(code, files) {
       files[n] = cur.slice(0, offset) + data + cur.slice(offset + data.length);
     }
   };
+  Storage.writeJSON = (n, data) => { files[n] = JSON.stringify(data); };
   const fakeRequire = (m) => { if (m === "Storage") return Storage; throw new Error(m); };
   const E = { showMessage: () => {} };
   const load = (f) => calls.push(["load", f]);
@@ -39,6 +40,18 @@ test("install writes every storage entry and loads the app", function() {
   }
   assert.ok(r.files["morse.tapseq.js"].includes("createSequencer"), "../../lib file resolved");
   assert.deepStrictEqual(r.calls, [["eval", "BOOTUPDATE"], ["load", "morse.app.js"]]);
+});
+
+test("a full install adds the launcher entry; re-uploading one file doesn't", function() {
+  const app = dev.loadApp("mr-morse");
+  const code = dev.buildInstall(app);
+  const line = code.split("\n").find((l) => l.includes("mr-morse.info"));
+  const info = JSON.parse(line.slice(line.indexOf(",") + 1, line.lastIndexOf(")")));
+  assert.deepStrictEqual([info.id, info.name, info.type, info.src, info.icon],
+    ["mr-morse", "Mr Morse", "app", "morse.app.js", "morse.img"]);
+  assert.ok(info.files.split(",").includes("morse.boot.js"));
+  const one = dev.buildInstall(app, app.files.filter((f) => f.name === "morse.app.js"));
+  assert.ok(!one.includes("mr-morse.info"));
 });
 
 test("large files are split into chunked writes that reassemble exactly", function() {
